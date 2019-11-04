@@ -1,0 +1,1 @@
+sudo apt-get install libxcb1-dev libxcb-image0-dev libxcb-util-dev libxcb-icccm4-dev
