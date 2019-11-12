@@ -918,6 +918,12 @@ horizontal_line_intersection(Point* p0, Point* p1, Point* result, int y) {
   result->y = y;
 }
 
+Point*
+get_clip_edge_intersection(ClippingEdge clip_edge, Point* r, Point* v, int clipping_boundary[static ClipEdge_COUNT]) {
+  bool result = false;
+  return result;
+}
+
 void
 init_candidate_clip_vertces(CandidateClipVertices* ccv, int max_vertex_count) {
   ccv->buffer_half_A = push_array(Point*, max_vertex_count);
@@ -957,70 +963,10 @@ candidate_clip_swap_buffers(CandidateClipVertices* ccv) {
 }
 
 void
-draw_figure() {
-#if 0
-  line_black(245, 128, 371, 128);
-  line_black(371, 128, 371, 0);
-  line_black(371, 0, 245, 0);
-  line_black(245, 0, 245, 128);
-
-  // Line drawing tests
-//  line_black(20, 10, 30, 18);
-//  line_black(20, 10, 30, 28);
-//  line_black(20, 18, 30, 10);
-//  line_black(20, 28, 30, 10);
-//  line_black(30, 10, 20, 10);
-//  line_black(20, 10, 20, 18);
-
-  // Intersection with a vertical line
-//  int x0 = 10;
-//  int y0 = 10;
-//  int x1 = 50;
-//  int y1 = 30;
-//  int x = 27;
-//  float m = (y1 - y0)/(float)(x1 - x0);
-//  line_black(x0, y0, x1, y1);
-//  line(x, 10, x, 30, &COLOR_BLUE);
-//  int y = y1 + m*(x - x1);
-//  draw_pixel_red(x, y);
-
-  // Intersection with a horizontal line
-//  int x0 = 10;
-//  int y0 = 10;
-//  int x1 = 50;
-//  int y1 = 30;
-//  int y = 27;
-//  float m = (y1 - y0)/(float)(x1 - x0);
-//  line_black(x0, y0, x1, y1);
-//  line(10, y, 50, y, &COLOR_BLUE);
-//  int x = x1 + (y - y1)/m;
-//  draw_pixel_red(x, y);
-
-#elif 1
-  Shape* shape = find_shape(L'▲');
-  Rectangle shape_bb = get_bounding_box(shape);
-  printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
-         shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
-  Matrix3 w2vp_translate = {};
-  translate(&w2vp_translate, -shape_bb.lower_left.x + 100, -shape_bb.lower_left.y + 100);
-  Matrix3 w2vp_scale = {};
-  scale_pivot(&w2vp_scale, 1.0f, 1.0f, &shape_bb.lower_left);
-  Matrix3 w2vp_xform = {};
-  w2vp_xform = matrix3_mul(&w2vp_translate, &w2vp_scale);
-  apply_xform(shape, &w2vp_xform);
-
-  Polygon polygon = new_empty_polygon();
-  make_polygon(&polygon, shape);
-
-  int clipping_boundary[ClipEdge_COUNT] = {0};
-  clipping_boundary[ClipEdge_Left] = 200;
-  clipping_boundary[ClipEdge_Right] = 600;
-  clipping_boundary[ClipEdge_Top] = 500;
-  clipping_boundary[ClipEdge_Bottom] = 50;
-
-  for (int i = 0; i < polygon.n_contours; ++i) {
-    Point* contour = polygon.contours[i];
-    int contour_vertex_count = polygon.contour_vertex_count[i];
+stupid_clipping_algorithm(Polygon* polygon, int clipping_boundary[static ClipEdge_COUNT]) {
+  for (int i = 0; i < polygon->n_contours; ++i) {
+    Point* contour = polygon->contours[i];
+    int contour_vertex_count = polygon->contour_vertex_count[i];
     Point* clipped_contour = push_array(Point, contour_vertex_count*2);
     int clipped_vertex_count = 0;
     Point* recently_clipped[ClipEdge_COUNT] = {0};
@@ -1099,27 +1045,104 @@ draw_figure() {
         clipped_contour[clipped_vertex_count++] = *v;
       }
     }
+  }
+}
 
-//    polygon.contours[i] = clipped_contour;
-//    polygon.contour_vertex_count[i] = clipped_vertex_count;
-//    assert(clipped_vertex_count > 1);
-//    Point* p0 = &clipped_contour[0];
-//    for (int i = 1; i < clipped_vertex_count; ++i) {
-//      Point* p1 = &clipped_contour[i];
-//      line(p0->x, p0->y, p1->x, p1->y, &COLOR_RED);
-//      p0 = p1;
-//    }
+void
+do_clip_point(Point* v, ClippingEdge clipping_edge, Point* recently_clipped[static ClipEdge_COUNT],
+              int clipping_boundary[static ClipEdge_COUNT],
+              Point* clipped_contour, int* clipped_vertex_count) {
+  if (recently_clipped[clipping_edge]) {
+    Point* intersect_point = get_clip_edge_intersection(clipping_edge, recently_clipped[clipping_edge], v, clipping_boundary);
+    if (intersection_point) {
+    }
+  }
+}
+
+void
+draw_figure() {
+#if 0
+  line_black(245, 128, 371, 128);
+  line_black(371, 128, 371, 0);
+  line_black(371, 0, 245, 0);
+  line_black(245, 0, 245, 128);
+
+  // Line drawing tests
+//  line_black(20, 10, 30, 18);
+//  line_black(20, 10, 30, 28);
+//  line_black(20, 18, 30, 10);
+//  line_black(20, 28, 30, 10);
+//  line_black(30, 10, 20, 10);
+//  line_black(20, 10, 20, 18);
+
+  // Intersection with a vertical line
+//  int x0 = 10;
+//  int y0 = 10;
+//  int x1 = 50;
+//  int y1 = 30;
+//  int x = 27;
+//  float m = (y1 - y0)/(float)(x1 - x0);
+//  line_black(x0, y0, x1, y1);
+//  line(x, 10, x, 30, &COLOR_BLUE);
+//  int y = y1 + m*(x - x1);
+//  draw_pixel_red(x, y);
+
+  // Intersection with a horizontal line
+//  int x0 = 10;
+//  int y0 = 10;
+//  int x1 = 50;
+//  int y1 = 30;
+//  int y = 27;
+//  float m = (y1 - y0)/(float)(x1 - x0);
+//  line_black(x0, y0, x1, y1);
+//  line(10, y, 50, y, &COLOR_BLUE);
+//  int x = x1 + (y - y1)/m;
+//  draw_pixel_red(x, y);
+
+#elif 1
+  Shape* shape = find_shape(L'▲');
+  Rectangle shape_bb = get_bounding_box(shape);
+  printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
+         shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
+  Matrix3 w2vp_translate = {};
+  translate(&w2vp_translate, -shape_bb.lower_left.x + 100, -shape_bb.lower_left.y + 100);
+  Matrix3 w2vp_scale = {};
+  scale_pivot(&w2vp_scale, 1.0f, 1.0f, &shape_bb.lower_left);
+  Matrix3 w2vp_xform = {};
+  w2vp_xform = matrix3_mul(&w2vp_translate, &w2vp_scale);
+  apply_xform(shape, &w2vp_xform);
+
+  Polygon polygon = new_empty_polygon();
+  make_polygon(&polygon, shape);
+
+  int clipping_boundary[ClipEdge_COUNT] = {0};
+  clipping_boundary[ClipEdge_Left] = 200;
+  clipping_boundary[ClipEdge_Right] = 600;
+  clipping_boundary[ClipEdge_Top] = 500;
+  clipping_boundary[ClipEdge_Bottom] = 50;
+
+  for (int i = 0; i < polygon.n_contours; ++i) {
+    Point* contour = polygon.contours[i];
+    int contour_vertex_count = polygon.contour_vertex_count[i];
+    Point* clipped_contour = push_array(Point, contour_vertex_count*2);
+    int clipped_vertex_count = 0;
+    Point* recently_clipped[ClipEdge_COUNT] = {0};
+    for (int j = 0; j < contour_vertex_count; ++j) {
+      Point* v = &contour[j];
+      do_clip_point(v, ClipEdge_Left, recently_clipped, clipping_boundary,
+                    clipped_contour, &clipped_vertex_count);
+    }
   }
 
-  //fill_polygon(&polygon);
-//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
-//       clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
-//  line(clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top],
-//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
-//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
-//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
-//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top],
-//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
+  fill_polygon(&polygon);
+  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
+       clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
+  line(clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top],
+       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
+  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
+       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
+  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top],
+       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
 #endif
 }
 
