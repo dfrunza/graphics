@@ -918,10 +918,30 @@ horizontal_line_intersection(Point* p0, Point* p1, Point* result, int y) {
   result->y = y;
 }
 
-Point*
-get_clip_edge_intersection(ClippingEdge clip_edge, Point* r, Point* v, int clipping_boundary[static ClipEdge_COUNT]) {
-  bool result = false;
-  return result;
+bool
+does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, int clipping_boundary[static ClipEdge_COUNT]) {
+  if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
+    int x = clipping_boundary[clipping_edge];
+    return !(p0->x > x && p1->x > x || p0->x < x && p1->x < x);
+  }
+  else if (clipping_edge == ClipEdge_Bottom || clipping_edge == ClipEdge_Top) {
+    int y = clipping_boundary[clipping_edge];
+    return !(p0->y > y && p1->y > y || p0->y < y && p1->y < y);
+  }
+  else {
+    assert (false);
+  }
+}
+
+void
+get_clip_edge_intersection(Point* r, Point* v, Point* result,
+                           ClippingEdge clipping_edge, int clipping_boundary[static ClipEdge_COUNT]) {
+  if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
+    vertical_line_intersection(r, v, result, clipping_boundary[clipping_edge]);
+  }
+  else if (clipping_edge == ClipEdge_Bottom || clipping_edge == ClipEdge_Top) {
+    horizontal_line_intersection(r, v, result, clipping_boundary[clipping_edge]);
+  }
 }
 
 void
@@ -962,101 +982,69 @@ candidate_clip_swap_buffers(CandidateClipVertices* ccv) {
   ccv->one_past_last_B = ccv->buffer_half_B;
 }
 
-void
-stupid_clipping_algorithm(Polygon* polygon, int clipping_boundary[static ClipEdge_COUNT]) {
-  for (int i = 0; i < polygon->n_contours; ++i) {
-    Point* contour = polygon->contours[i];
-    int contour_vertex_count = polygon->contour_vertex_count[i];
-    Point* clipped_contour = push_array(Point, contour_vertex_count*2);
-    int clipped_vertex_count = 0;
-    Point* recently_clipped[ClipEdge_COUNT] = {0};
-    CandidateClipVertices candidate_vertices = {0};
-    init_candidate_clip_vertces(&candidate_vertices, contour_vertex_count*2);
-    for (int j = 0; j < contour_vertex_count; ++j) {
-      add_candidate_clip_vertex(&candidate_vertices, &contour[j]);
-      candidate_clip_swap_buffers(&candidate_vertices);
-
-      Point* v = 0;
-      while (v = next_candidate_clip_vertex(&candidate_vertices)) {
-        if (v->x < clipping_boundary[ClipEdge_Left]) {
-          recently_clipped[ClipEdge_Left] = v;
-        }
-        else {
-          add_candidate_clip_vertex(&candidate_vertices, v);
-          Point* recently_clipped_point = recently_clipped[ClipEdge_Left];
-          if (recently_clipped_point) {
-            Point* intersection_point = push_struct(Point);
-            vertical_line_intersection(recently_clipped_point, v, intersection_point, clipping_boundary[ClipEdge_Left]);
-            add_candidate_clip_vertex(&candidate_vertices, intersection_point);
-          }
-        }
-      }
-      candidate_clip_swap_buffers(&candidate_vertices);
-
-      while (v = next_candidate_clip_vertex(&candidate_vertices)) {
-        if (v->x > clipping_boundary[ClipEdge_Right]) {
-          recently_clipped[ClipEdge_Right] = v;
-        }
-        else {
-          add_candidate_clip_vertex(&candidate_vertices, v);
-          Point* recently_clipped_point = recently_clipped[ClipEdge_Right];
-          if (recently_clipped_point) {
-            Point* intersection_point = push_struct(Point);
-            vertical_line_intersection(recently_clipped_point, v, intersection_point, clipping_boundary[ClipEdge_Right]);
-            add_candidate_clip_vertex(&candidate_vertices, intersection_point);
-          }
-        }
-      }
-      candidate_clip_swap_buffers(&candidate_vertices);
-
-      while (v = next_candidate_clip_vertex(&candidate_vertices)) {
-        if (v->y < clipping_boundary[ClipEdge_Bottom]) {
-          recently_clipped[ClipEdge_Bottom] = v;
-        }
-        else {
-          add_candidate_clip_vertex(&candidate_vertices, v);
-          Point* recently_clipped_point = recently_clipped[ClipEdge_Bottom];
-          if (recently_clipped_point) {
-            Point* intersection_point = push_struct(Point);
-            horizontal_line_intersection(recently_clipped_point, v, intersection_point, clipping_boundary[ClipEdge_Bottom]);
-            add_candidate_clip_vertex(&candidate_vertices, intersection_point);
-          }
-        }
-      }
-      candidate_clip_swap_buffers(&candidate_vertices);
-
-      while (v = next_candidate_clip_vertex(&candidate_vertices)) {
-        if (v->y > clipping_boundary[ClipEdge_Top]) {
-          recently_clipped[ClipEdge_Top] = v;
-        }
-        else {
-          add_candidate_clip_vertex(&candidate_vertices, v);
-          Point* recently_clipped_point = recently_clipped[ClipEdge_Top];
-          if (recently_clipped_point) {
-            Point* intersection_point = push_struct(Point);
-            horizontal_line_intersection(recently_clipped_point, v, intersection_point, clipping_boundary[ClipEdge_Top]);
-            add_candidate_clip_vertex(&candidate_vertices, intersection_point);
-          }
-        }
-      }
-      candidate_clip_swap_buffers(&candidate_vertices);
-
-      while (v = next_candidate_clip_vertex(&candidate_vertices)) {
-        clipped_contour[clipped_vertex_count++] = *v;
-      }
+bool
+is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, int clipping_boundary[static ClipEdge_COUNT]) {
+  if (clipping_edge == ClipEdge_Left) {
+    if (v->x >= clipping_boundary[ClipEdge_Left]) {
+      return true;
     }
   }
+  else if (clipping_edge == ClipEdge_Right) {
+    if (v->x <= clipping_boundary[ClipEdge_Right]) {
+      return true;
+    }
+  }
+  else if (clipping_edge == ClipEdge_Bottom) {
+    if (v->y >= clipping_boundary[ClipEdge_Bottom]) {
+      return true;
+    }
+  }
+  else if (clipping_edge == ClipEdge_Top) {
+    if (v->y <= clipping_boundary[ClipEdge_Top]) {
+      return true;
+    }
+  }
+  else {
+    assert (false);
+  }
+  return false;
 }
 
 void
-do_clip_point(Point* v, ClippingEdge clipping_edge, Point* recently_clipped[static ClipEdge_COUNT],
-              int clipping_boundary[static ClipEdge_COUNT],
+do_clip_point(Point* v, ClippingEdge clipping_edge, Point* first_clipped[static ClipEdge_COUNT],
+              Point* recently_clipped[static ClipEdge_COUNT], int clipping_boundary[static ClipEdge_COUNT],
               Point* clipped_contour, int* clipped_vertex_count) {
-  if (recently_clipped[clipping_edge]) {
-    Point* intersect_point = get_clip_edge_intersection(clipping_edge, recently_clipped[clipping_edge], v, clipping_boundary);
-    if (intersection_point) {
+  if (!first_clipped[clipping_edge]) {
+    first_clipped[clipping_edge] = v;
+  }
+  else {
+    if (recently_clipped[clipping_edge]) {
+      if (does_intersect_clipping_edge(recently_clipped[clipping_edge], v, clipping_edge, clipping_boundary)) {
+        Point* intersection_point = push_struct(Point);
+        get_clip_edge_intersection(recently_clipped[clipping_edge], v, intersection_point, clipping_edge, clipping_boundary);
+        if (clipping_edge < ClipEdge_COUNT-1) {
+          do_clip_point(intersection_point, clipping_edge+1, first_clipped, recently_clipped, clipping_boundary,
+                        clipped_contour, clipped_vertex_count);
+        }
+        else {
+          clipped_contour[*clipped_vertex_count] = *intersection_point;
+          ++(*clipped_vertex_count);
+        }
+      }
     }
   }
+  recently_clipped[clipping_edge] = v;
+  if (is_point_inside_clip_boundary(v, clipping_edge, clipping_boundary)) {
+    if (clipping_edge < ClipEdge_COUNT-1) {
+      do_clip_point(v, clipping_edge+1, first_clipped, recently_clipped, clipping_boundary,
+                    clipped_contour, clipped_vertex_count);
+    }
+    else {
+      clipped_contour[*clipped_vertex_count] = *v;
+      ++(*clipped_vertex_count);
+    }
+  }
+  int x = 0x0;
 }
 
 void
@@ -1127,22 +1115,54 @@ draw_figure() {
     Point* clipped_contour = push_array(Point, contour_vertex_count*2);
     int clipped_vertex_count = 0;
     Point* recently_clipped[ClipEdge_COUNT] = {0};
+    Point* first_clipped[ClipEdge_COUNT] = {0};
     for (int j = 0; j < contour_vertex_count; ++j) {
       Point* v = &contour[j];
-      do_clip_point(v, ClipEdge_Left, recently_clipped, clipping_boundary,
+      do_clip_point(v, ClipEdge_Left, first_clipped, recently_clipped, clipping_boundary,
                     clipped_contour, &clipped_vertex_count);
     }
+    for (ClippingEdge clipping_edge = ClipEdge_Left;
+         clipping_edge < ClipEdge_COUNT;
+         ++clipping_edge) {
+      if (does_intersect_clipping_edge(recently_clipped[clipping_edge], first_clipped[clipping_edge], clipping_edge, clipping_boundary)) {
+        Point* intersection_point = push_struct(Point);
+        get_clip_edge_intersection(recently_clipped[clipping_edge], first_clipped[clipping_edge], intersection_point, clipping_edge, clipping_boundary);
+        if (clipping_edge < ClipEdge_COUNT-1) {
+          do_clip_point(intersection_point, clipping_edge+1, first_clipped, recently_clipped, clipping_boundary,
+                        clipped_contour, &clipped_vertex_count);
+        }
+        else {
+          clipped_contour[clipped_vertex_count] = *intersection_point;
+          clipped_vertex_count++;
+        }
+      }
+    }
+
+//    polygon.contours[i] = clipped_contour;
+//    polygon.contour_vertex_count[i] = clipped_vertex_count;
+
+//    assert (clipped_vertex_count > 0);
+//    Point* p0 = &clipped_contour[0];
+//    Point* p1 = 0;
+//    Point* p = p0;
+//    for (int i = 1; i < clipped_vertex_count; ++i) {
+//      p1 = &clipped_contour[i];
+//      line(p->x, p->y, p1->x, p1->y, &COLOR_RED);
+//      p = p1;
+//    }
+//    line(p1->x, p1->y, p0->x, p0->y, &COLOR_RED);
+    int x = 0x0;
   }
 
   fill_polygon(&polygon);
-  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
-       clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
-  line(clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top],
-       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
-  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
-       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
-  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top],
-       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
+//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
+//       clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
+//  line(clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top],
+//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
+//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
+//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
+//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top],
+//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
 #endif
 }
 
