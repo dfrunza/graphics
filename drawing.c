@@ -62,6 +62,7 @@ typedef struct {
   int* contours;
   int n_contours;
   Point* points;
+  int total_point_count;
 } Shape;
 
 typedef struct {
@@ -919,7 +920,7 @@ horizontal_line_intersection(Point* p0, Point* p1, Point* result, int y) {
 }
 
 bool
-does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, int clipping_boundary[static ClipEdge_COUNT]) {
+does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
     int x = clipping_boundary[clipping_edge];
     return !(p0->x > x && p1->x > x || p0->x < x && p1->x < x);
@@ -935,7 +936,7 @@ does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, i
 
 void
 get_clip_edge_intersection(Point* r, Point* v, Point* result,
-                           ClippingEdge clipping_edge, int clipping_boundary[static ClipEdge_COUNT]) {
+                           ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
     vertical_line_intersection(r, v, result, clipping_boundary[clipping_edge]);
   }
@@ -983,7 +984,7 @@ candidate_clip_swap_buffers(CandidateClipVertices* ccv) {
 }
 
 bool
-is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, int clipping_boundary[static ClipEdge_COUNT]) {
+is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   if (clipping_edge == ClipEdge_Left) {
     if (v->x >= clipping_boundary[ClipEdge_Left]) {
       return true;
@@ -1012,7 +1013,7 @@ is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, int clipping
 
 void
 do_clip_point(Point* v, ClippingEdge clipping_edge, Point* first_clipped[static ClipEdge_COUNT],
-              Point* recently_clipped[static ClipEdge_COUNT], int clipping_boundary[static ClipEdge_COUNT],
+              Point* recently_clipped[static ClipEdge_COUNT], float clipping_boundary[static ClipEdge_COUNT],
               Point* clipped_contour, int* clipped_vertex_count) {
   if (!first_clipped[clipping_edge]) {
     first_clipped[clipping_edge] = v;
@@ -1100,24 +1101,26 @@ draw_figure() {
   w2vp_xform = matrix3_mul(&w2vp_translate, &w2vp_scale);
   apply_xform(shape, &w2vp_xform);
 
-  Polygon polygon = new_empty_polygon();
-  make_polygon(&polygon, shape);
+  float clipping_boundary[ClipEdge_COUNT] = {0};
+  clipping_boundary[ClipEdge_Left] = 200.0;
+  clipping_boundary[ClipEdge_Right] = 600.0;
+  clipping_boundary[ClipEdge_Top] = 500.0;
+  clipping_boundary[ClipEdge_Bottom] = 50.0; // 150.0
+  assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
+  assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
 
-  int clipping_boundary[ClipEdge_COUNT] = {0};
-  clipping_boundary[ClipEdge_Left] = 200;
-  clipping_boundary[ClipEdge_Right] = 600;
-  clipping_boundary[ClipEdge_Top] = 500;
-  clipping_boundary[ClipEdge_Bottom] = 50;
-
-  for (int i = 0; i < polygon.n_contours; ++i) {
-    Point* contour = polygon.contours[i];
-    int contour_vertex_count = polygon.contour_vertex_count[i];
-    Point* clipped_contour = push_array(Point, contour_vertex_count*2);
+  Shape clipped_shape = {0};
+  clipped_shape.n_contours = shape->n_contours;
+  clipped_shape.contours = push_array(int, shape->n_contours);
+  clipped_shape.points = push_array(Point, shape->total_point_count*2);
+  Point* clipped_contour = clipped_shape.points;
+  for (int i = 0; i < shape->n_contours; ++i) {
+    int contour_vertex_count = shape->contours[i];
     int clipped_vertex_count = 0;
     Point* recently_clipped[ClipEdge_COUNT] = {0};
     Point* first_clipped[ClipEdge_COUNT] = {0};
     for (int j = 0; j < contour_vertex_count; ++j) {
-      Point* v = &contour[j];
+      Point* v = &shape->points[j];
       do_clip_point(v, ClipEdge_Left, first_clipped, recently_clipped, clipping_boundary,
                     clipped_contour, &clipped_vertex_count);
     }
@@ -1137,9 +1140,9 @@ draw_figure() {
         }
       }
     }
-
-//    polygon.contours[i] = clipped_contour;
-//    polygon.contour_vertex_count[i] = clipped_vertex_count;
+    clipped_shape.contours[i] = clipped_vertex_count;
+    clipped_contour += clipped_vertex_count;
+    clipped_shape.total_point_count += clipped_vertex_count;
 
 //    assert (clipped_vertex_count > 0);
 //    Point* p0 = &clipped_contour[0];
@@ -1154,15 +1157,18 @@ draw_figure() {
     int x = 0x0;
   }
 
+  Polygon polygon = new_empty_polygon();
+  make_polygon(&polygon, &clipped_shape);
   fill_polygon(&polygon);
-//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
-//       clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
-//  line(clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top],
-//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
-//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
-//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
-//  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top],
-//       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
+
+  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
+       clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
+  line(clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top],
+       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
+  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
+       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
+  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top],
+       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
 #endif
 }
 
