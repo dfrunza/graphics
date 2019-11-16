@@ -93,9 +93,9 @@
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="M -50,-243 300,247"
-       id="path3809"
+       d="M 200,-203 H 600 V 147 H 200 Z"
+       id="path3811"
        inkscape:connector-curvature="0"
-       sodipodi:nodetypes="cc" />
+       sodipodi:nodetypes="ccc" />
   </g>
 </svg>
