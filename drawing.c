@@ -1014,7 +1014,7 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
     Point* recently_clipped[ClipEdge_COUNT] = {0};
     Point* first_clipped[ClipEdge_COUNT] = {0};
     for (int j = 0; j < contour_vertex_count; ++j) {
-      Point* v = &shape->points[j];
+      Point* v = shape->points++;
       do_clip_point(v, ClipEdge_Left, first_clipped, recently_clipped, clipping_boundary,
                     clipped_contour, &clipped_vertex_count);
     }
@@ -1043,46 +1043,8 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
 
 void
 draw_figure() {
-#if 0
-  line_black(245, 128, 371, 128);
-  line_black(371, 128, 371, 0);
-  line_black(371, 0, 245, 0);
-  line_black(245, 0, 245, 128);
-
-  // Line drawing tests
-//  line_black(20, 10, 30, 18);
-//  line_black(20, 10, 30, 28);
-//  line_black(20, 18, 30, 10);
-//  line_black(20, 28, 30, 10);
-//  line_black(30, 10, 20, 10);
-//  line_black(20, 10, 20, 18);
-
-  // Intersection with a vertical line
-//  int x0 = 10;
-//  int y0 = 10;
-//  int x1 = 50;
-//  int y1 = 30;
-//  int x = 27;
-//  float m = (y1 - y0)/(float)(x1 - x0);
-//  line_black(x0, y0, x1, y1);
-//  line(x, 10, x, 30, &COLOR_BLUE);
-//  int y = y1 + m*(x - x1);
-//  draw_pixel_red(x, y);
-
-  // Intersection with a horizontal line
-//  int x0 = 10;
-//  int y0 = 10;
-//  int x1 = 50;
-//  int y1 = 30;
-//  int y = 27;
-//  float m = (y1 - y0)/(float)(x1 - x0);
-//  line_black(x0, y0, x1, y1);
-//  line(10, y, 50, y, &COLOR_BLUE);
-//  int x = x1 + (y - y1)/m;
-//  draw_pixel_red(x, y);
-
-#elif 1
-  Shape* shape = find_shape(L'D');
+#if 1
+  Shape* shape = find_shape(L'★'); // '.', '?', ':', '~', '$', '-', '_', '|', '"', '\''-> segfault
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
@@ -1095,9 +1057,9 @@ draw_figure() {
   apply_xform(shape, &w2vp_xform);
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
-  clipping_boundary[ClipEdge_Left] = 200.0;
+  clipping_boundary[ClipEdge_Left] = 200.0; // ('D', 201.0) -> segfault
   clipping_boundary[ClipEdge_Right] = 600.0;
-  clipping_boundary[ClipEdge_Top] = 800.0;
+  clipping_boundary[ClipEdge_Top] = 700.0;
   clipping_boundary[ClipEdge_Bottom] = 250.0;
   assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
   assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
