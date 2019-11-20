@@ -1008,19 +1008,23 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
   clipped_shape.contours = push_array(int, shape->n_contours);
   clipped_shape.points = push_array(Point, shape->total_point_count*2);
   Point* clipped_contour = clipped_shape.points;
+  Point* shape_points = shape->points;
   for (int i = 0; i < shape->n_contours; ++i) {
     int contour_vertex_count = shape->contours[i];
     int clipped_vertex_count = 0;
     Point* recently_clipped[ClipEdge_COUNT] = {0};
     Point* first_clipped[ClipEdge_COUNT] = {0};
     for (int j = 0; j < contour_vertex_count; ++j) {
-      Point* v = shape->points++;
+      Point* v = shape_points++;
       do_clip_point(v, ClipEdge_Left, first_clipped, recently_clipped, clipping_boundary,
                     clipped_contour, &clipped_vertex_count);
     }
     for (ClippingEdge clipping_edge = ClipEdge_Left;
          clipping_edge < ClipEdge_COUNT;
          ++clipping_edge) {
+      if (!first_clipped[clipping_edge]) {
+        continue;
+      }
       if (does_intersect_clipping_edge(recently_clipped[clipping_edge], first_clipped[clipping_edge], clipping_edge, clipping_boundary)) {
         Point* intersection_point = push_struct(Point);
         get_clip_edge_intersection(recently_clipped[clipping_edge], first_clipped[clipping_edge], intersection_point, clipping_edge, clipping_boundary);
@@ -1044,7 +1048,7 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
 void
 draw_figure() {
 #if 1
-  Shape* shape = find_shape(L'★'); // '.', '?', ':', '~', '$', '-', '_', '|', '"', '\''-> segfault
+  Shape* shape = find_shape(L'$'); // '$', -> segfault
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
@@ -1069,9 +1073,11 @@ draw_figure() {
   shape = &clipped_shape;
 #endif
 
-  Polygon polygon = new_empty_polygon();
-  make_polygon(&polygon, shape);
-  fill_polygon(&polygon);
+  if (clipped_shape.total_point_count > 0) {
+    Polygon polygon = new_empty_polygon();
+    make_polygon(&polygon, shape);
+    fill_polygon(&polygon);
+  }
 
   line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
        clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
