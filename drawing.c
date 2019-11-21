@@ -914,11 +914,11 @@ bool
 does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
     int x = clipping_boundary[clipping_edge];
-    return !(p0->x > x && p1->x > x || p0->x < x && p1->x < x);
+    return (p0->x != p1->x) && ((p0->x >= x && p1->x < x) || (p0->x <= x && p1->x >= x));
   }
   else if (clipping_edge == ClipEdge_Bottom || clipping_edge == ClipEdge_Top) {
     int y = clipping_boundary[clipping_edge];
-    return !(p0->y > y && p1->y > y || p0->y < y && p1->y < y);
+    return (p0->y != p1->y) && ((p0->y >= y && p1->y <= y) || (p0->y <= y && p1->y >= y));
   }
   else {
     assert (false);
@@ -1048,7 +1048,7 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
 void
 draw_figure() {
 #if 1
-  Shape* shape = find_shape(L'$'); // '$', -> segfault
+  Shape* shape = find_shape(L'D');
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
@@ -1061,7 +1061,7 @@ draw_figure() {
   apply_xform(shape, &w2vp_xform);
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
-  clipping_boundary[ClipEdge_Left] = 200.0; // ('D', 201.0) -> segfault
+  clipping_boundary[ClipEdge_Left] = 200.0;
   clipping_boundary[ClipEdge_Right] = 600.0;
   clipping_boundary[ClipEdge_Top] = 700.0;
   clipping_boundary[ClipEdge_Bottom] = 250.0;
@@ -1079,6 +1079,7 @@ draw_figure() {
     fill_polygon(&polygon);
   }
 
+#if 0
   line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
        clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
   line(clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top],
@@ -1087,6 +1088,7 @@ draw_figure() {
        clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
   line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top],
        clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
+#endif
 #endif
 }
 
