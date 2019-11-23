@@ -174,6 +174,9 @@ global Color COLOR_BLUE = {.R=0, .G=0, .B=255};
 global Color WHITE = {.R=255, .G=255, .B=255};
 global Color BLACK = {.R=0, .G=0, .B=0};
 
+global int image_width = 1000;
+global int image_height = 900;
+
 iPoint
 convert_point_ftoi(Point* f_pt) {
   iPoint i_pt = {};
@@ -497,6 +500,7 @@ make_polygon(Polygon* polygon, Shape* shape) {
   polygon->contour_vertex_count = push_array(int, shape->n_contours);
   polygon->n_contours = shape->n_contours;
   polygon->contours = push_array(Point*, shape->n_contours);
+  Point* shape_points = shape->points;
   for (int i = 0; i < shape->n_contours; ++i) {
     polygon->contour_vertex_count[i] = 0;
     polygon->contours[i] = push_array(Point, shape->contours[i]+3);
@@ -505,7 +509,7 @@ make_polygon(Polygon* polygon, Shape* shape) {
 
     int j = 0; 
     for (; j < shape->contours[i]; ++j) {
-      polygon->contours[i][j] = shape->points[j];
+      polygon->contours[i][j] = shape_points[j];
     }
 
     polygon->contour_vertex_count[i] = j;
@@ -514,7 +518,7 @@ make_polygon(Polygon* polygon, Shape* shape) {
     polygon->contours[i][polygon->contour_vertex_count[i]] = polygon->contours[i][0];
     polygon->contours[i][polygon->contour_vertex_count[i]+1] = polygon->contours[i][1];
 
-    shape->points += shape->contours[i];
+    shape_points += shape->contours[i];
   }
 }
 
@@ -556,7 +560,7 @@ new_empty_polygon() {
 }
 
 void
-fill_polygon(Polygon* polygon) {
+fill_polygon(Polygon* polygon, int scanline_y0, int scanline_y1) {
   assert(polygon->total_vertex_count >= 3);
   EdgeList* edge_list = push_array(EdgeList, polygon->n_contours);
   for (int i = 0; i < polygon->n_contours; ++i) {
@@ -646,7 +650,7 @@ fill_polygon(Polygon* polygon) {
   active_edge_list.entries[0].x_intercept = INT_MAX;
 
   assert(edge_heap.count >= 2);
-  int y = edge_heap.entries[1].y0;
+  int y = scanline_y0;
   do {
     //printf("--------------- %d -----------------\n", y);
     for (int i = 0; i < active_edge_list.count; ++i) {
@@ -682,7 +686,7 @@ fill_polygon(Polygon* polygon) {
       edge.x_accumulator = 0;
       insert_active_edge(&active_edge_list, &edge);
     }
-  } while (active_edge_list.count > 0);
+  } while (y < scanline_y1);
 }
 
 
@@ -1048,7 +1052,7 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
 void
 draw_figure() {
 #if 1
-  Shape* shape = find_shape(L'D');
+  Shape* shape = find_shape(L':');
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
@@ -1061,22 +1065,22 @@ draw_figure() {
   apply_xform(shape, &w2vp_xform);
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
-  clipping_boundary[ClipEdge_Left] = 200.0;
-  clipping_boundary[ClipEdge_Right] = 600.0;
-  clipping_boundary[ClipEdge_Top] = 700.0;
-  clipping_boundary[ClipEdge_Bottom] = 250.0;
+  clipping_boundary[ClipEdge_Left] = 0.0;
+  clipping_boundary[ClipEdge_Right] = image_width;
+  clipping_boundary[ClipEdge_Top] = image_height;
+  clipping_boundary[ClipEdge_Bottom] = 0.0;
   assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
   assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
 
-#if 1
+#if 0
   Shape clipped_shape = clip_shape(shape, clipping_boundary);
   shape = &clipped_shape;
 #endif
 
-  if (clipped_shape.total_point_count > 0) {
+  if (shape->total_point_count > 0) {
     Polygon polygon = new_empty_polygon();
     make_polygon(&polygon, shape);
-    fill_polygon(&polygon);
+    fill_polygon(&polygon, 0, image_height);
   }
 
 #if 0
@@ -1114,7 +1118,7 @@ main(int argc, char** argv) {
   xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
   printf("root depth %d\n",screen->root_depth);
 
-  image = create_image(conn, 1000, 900);
+  image = create_image(conn, image_width, image_height);
   if (image == NULL) {
     printf("ERROR\n");
     xcb_disconnect(conn);
