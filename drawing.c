@@ -1092,29 +1092,27 @@ draw_figure() {
   printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
 
-  printf("Original shape\n>>");
+  printf("Original shape\n>> ");
   print_shape_points(shape);
-#if 0
-  Matrix3 translate_to_origin = {0};
-  translate(&translate_to_origin, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
+#if 1
+  Matrix3 translate_to_origin_xform = {0};
+  translate(&translate_to_origin_xform, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
 
-//  Matrix3 scale_matrix = {0};
-//  scale(&scale_matrix, .5f, .5f);
-//  apply_xform(shape, &scale_matrix);
+  Matrix3 vflip_xform = {0};
+  flip_vertical(&vflip_xform);
+  Matrix3 xform = matrix3_mul(&vflip_xform, &translate_to_origin_xform);
+  apply_xform(shape, &xform);
+  printf("vflip & translate_to_origin\n>> ");
+  print_shape_points(shape);
 
-  Matrix3 vflip = {0};
-  flip_vertical(&vflip);
-  Matrix3 xform = matrix3_mul(&vflip, &translate_to_origin);
-//  apply_xform(shape, &xform);
-//  printf("translate_to_origin * vflip\n");
-//  print_shape_points(shape);
-
+  Matrix3 scale_xform = {0};
+  scale(&scale_xform, .5f, .5f);
   Matrix3 translate_to_top = {0};
   translate(&translate_to_top, 0, image_height-1);
-  xform = matrix3_mul(&translate_to_origin, &translate_to_top);
+  xform = matrix3_mul(&translate_to_top, &scale_xform);
 
   apply_xform(shape, &xform);
-  printf("apply_xform\n>>");
+  printf("scale & translate_to_top\n>> ");
   print_shape_points(shape);
 #else
   Matrix3 translate_to_origin = {0};
@@ -1130,8 +1128,8 @@ draw_figure() {
   Matrix3 vflip = {0};
   flip_vertical(&vflip);
   Matrix3 xform = matrix3_mul(&vflip, &translate_to_origin);
-  apply_xform(shape, &vflip);
-  printf("vflip\n>>");
+  apply_xform(shape, &xform);
+  printf("vflip * translate_to_origin\n>>");
   print_shape_points(shape);
 
   Matrix3 translate_to_top = {0};
@@ -1158,7 +1156,7 @@ draw_figure() {
   if (shape->total_point_count > 0) {
     Polygon polygon = new_empty_polygon();
     make_polygon(&polygon, shape);
-//    fill_polygon(&polygon, 0, image_height-1);
+    fill_polygon(&polygon, 0, image_height-1);
   }
 
 #if 0
