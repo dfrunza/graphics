@@ -174,8 +174,10 @@ global Color COLOR_BLUE = {.R=0, .G=0, .B=255};
 global Color WHITE = {.R=255, .G=255, .B=255};
 global Color BLACK = {.R=0, .G=0, .B=0};
 
-global int image_width = 1000;
-global int image_height = 900;
+global int image_width = 800;
+// can't go more than 800? try drawing the pixel at left bottom corner and image_height = 900
+// and you'll see what I mean.
+global int image_height = 800;
 
 iPoint
 convert_point_ftoi(Point* f_pt) {
@@ -391,26 +393,27 @@ draw_pixel_black(int x, int y) {
   *p = make_grayscale_rgb32(0);
 }
 
-void
-draw_pixel_rgb(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
-  uint32_t* p = (uint32_t*)(image->data + (image->width*4)*y + 4*x);
-  *p = ((uint32_t)B | (uint32_t)G << 8 | (uint32_t)R << 16);
-}
-
-void
-draw_pixel_red(int x, int y) {
-  draw_pixel_rgb(x, y, COLOR_RED.R, COLOR_RED.G, COLOR_RED.B);
-}
-
-void
-draw_pixel_green(int x, int y) {
-  draw_pixel_rgb(x, y, COLOR_GREEN.R, COLOR_GREEN.G, COLOR_GREEN.B);
-}
-
-void
-draw_pixel_blue(int x, int y) {
-  draw_pixel_rgb(x, y, COLOR_BLUE.R, COLOR_BLUE.G, COLOR_BLUE.B);
-}
+//TODO: Buggy; draw_pixel_red(2, 2) draws two pixels instead of one.
+//void
+//draw_pixel_rgb(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
+//  uint32_t* p = (uint32_t*)(image->data + (image->width*4)*y + 4*x);
+//  *p = ((uint32_t)B | (uint32_t)G << 8 | (uint32_t)R << 16);
+//}
+//
+//void
+//draw_pixel_red(int x, int y) {
+//  draw_pixel_rgb(x, y, COLOR_RED.R, COLOR_RED.G, COLOR_RED.B);
+//}
+//
+//void
+//draw_pixel_green(int x, int y) {
+//  draw_pixel_rgb(x, y, COLOR_GREEN.R, COLOR_GREEN.G, COLOR_GREEN.B);
+//}
+//
+//void
+//draw_pixel_blue(int x, int y) {
+//  draw_pixel_rgb(x, y, COLOR_BLUE.R, COLOR_BLUE.G, COLOR_BLUE.B);
+//}
 
 bool
 compare_edge_is_less(Edge* edge_A, Edge* edge_B) {
@@ -758,7 +761,7 @@ create_image(xcb_connection_t* conn, int width, int height) {
 }
 
 void
-line(int x0, int y0, int x1, int y1, Color* color) {
+line(int x0, int y0, int x1, int y1) {
   int abs_dx = abs(x1 - x0);
   int abs_dy = abs(y1 - y0);
 
@@ -771,7 +774,7 @@ line(int x0, int y0, int x1, int y1, Color* color) {
       x_end = x0;
     }
     for (; x <= x_end; ++x) {
-      draw_pixel_rgb(x, y, color->R, color->G, color->B);
+      draw_pixel_black(x, y);
     }
   }
   else 
@@ -813,7 +816,7 @@ line(int x0, int y0, int x1, int y1, Color* color) {
     }
 
     for (; x <= x_end; ++x) {
-      draw_pixel_rgb(*p_x, *p_y, color->R, color->G, color->B);
+      draw_pixel_black(*p_x, *p_y);
       if (p < 0) {
         p += 2*abs_dy;
       } else {
@@ -826,8 +829,7 @@ line(int x0, int y0, int x1, int y1, Color* color) {
 
 void
 line_black(int x0, int y0, int x1, int y1) {
-  Color black = {.R=0, .G=0, .B=0};
-  line(x0, y0, x1, y1, &black);
+  line(x0, y0, x1, y1);
 }
 
 void
@@ -1074,6 +1076,15 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
 }
 
 void
+print_shape_points(Shape* shape) {
+  for (int i = 0; i < shape->total_point_count; ++i) {
+    Point* p = &shape->points[i];
+    printf("(%.1f, %.1f) ", p->x, p->y);
+  }
+  printf("\n");
+}
+
+void
 draw_figure() {
 #if 1
   Shape* shape = find_shape(L'▲');
@@ -1081,9 +1092,11 @@ draw_figure() {
   printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
 
+  printf("Original shape\n>>");
+  print_shape_points(shape);
+#if 0
   Matrix3 translate_to_origin = {0};
   translate(&translate_to_origin, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
-  //apply_xform(shape, &translate_to_origin);
 
 //  Matrix3 scale_matrix = {0};
 //  scale(&scale_matrix, .5f, .5f);
@@ -1091,19 +1104,48 @@ draw_figure() {
 
   Matrix3 vflip = {0};
   flip_vertical(&vflip);
-  Matrix3 xform = matrix3_mul(&translate_to_origin, &vflip);
-  //apply_xform(shape, &vflip);
+  Matrix3 xform = matrix3_mul(&vflip, &translate_to_origin);
+//  apply_xform(shape, &xform);
+//  printf("translate_to_origin * vflip\n");
+//  print_shape_points(shape);
 
   Matrix3 translate_to_top = {0};
-  translate(&translate_to_top, 0, image_height);
-  xform = matrix3_mul(&xform, &translate_to_top);
+  translate(&translate_to_top, 0, image_height-1);
+  xform = matrix3_mul(&translate_to_origin, &translate_to_top);
+
   apply_xform(shape, &xform);
-  //apply_xform(shape, &translate_to_top);
+  printf("apply_xform\n>>");
+  print_shape_points(shape);
+#else
+  Matrix3 translate_to_origin = {0};
+  translate(&translate_to_origin, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
+  apply_xform(shape, &translate_to_origin);
+  printf("translate_to_origin\n>>");
+  print_shape_points(shape);
+
+//  Matrix3 scale_matrix = {0};
+//  scale(&scale_matrix, .5f, .5f);
+//  apply_xform(shape, &scale_matrix);
+
+  Matrix3 vflip = {0};
+  flip_vertical(&vflip);
+  Matrix3 xform = matrix3_mul(&vflip, &translate_to_origin);
+  apply_xform(shape, &vflip);
+  printf("vflip\n>>");
+  print_shape_points(shape);
+
+  Matrix3 translate_to_top = {0};
+  translate(&translate_to_top, 0, image_height-1);
+  xform = matrix3_mul(&xform, &translate_to_top);
+  apply_xform(shape, &translate_to_top);
+  printf("translate_to_top\n>>");
+  print_shape_points(shape);
+#endif
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
   clipping_boundary[ClipEdge_Left] = 0.0;
-  clipping_boundary[ClipEdge_Right] = image_width;
-  clipping_boundary[ClipEdge_Top] = image_height;
+  clipping_boundary[ClipEdge_Right] = image_width-1;
+  clipping_boundary[ClipEdge_Top] = image_height-1;
   clipping_boundary[ClipEdge_Bottom] = 0.0;
   assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
   assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
@@ -1116,7 +1158,7 @@ draw_figure() {
   if (shape->total_point_count > 0) {
     Polygon polygon = new_empty_polygon();
     make_polygon(&polygon, shape);
-    fill_polygon(&polygon, 0, image_height);
+//    fill_polygon(&polygon, 0, image_height-1);
   }
 
 #if 0
