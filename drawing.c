@@ -234,8 +234,8 @@ vector3_mul_matrix3(Vector3* V, Matrix3* M) {
 
 Matrix3
 matrix3_mul(Matrix3* A, Matrix3* B) {
-  Matrix3 result = {};
-  
+  Matrix3 result = {0};
+
   Vector3 row_A = matrix3_row1(A);
   result.x1 = vector3_dot_product(&row_A, &B->col1);
   result.x2 = vector3_dot_product(&row_A, &B->col2);
@@ -358,6 +358,24 @@ scale_pivot(Matrix3* T, float s_x, float s_y, Point* pivot_pt) {
   col = &T->col3;
   col->x = pivot_pt->x*(1.f - s_x);
   col->y = pivot_pt->y*(1.f - s_y);
+  col->z = 1.f;
+}
+
+void
+flip_vertical(Matrix3* T) {
+  Vector3* col = &T->col1;
+  col->x = 1.f;
+  col->y = 0.f;
+  col->z = 0.f;
+
+  col = &T->col2;
+  col->x = 0.f;
+  col->y = -1.f;
+  col->z = 0.f;
+
+  col = &T->col3;
+  col->x = 0.f;
+  col->y = 0.f;
   col->z = 1.f;
 }
 
@@ -543,20 +561,26 @@ print_edge_list(EdgeList* edge_list) {
 
 EdgeList
 new_empty_edge_list() {
-  EdgeList object = {};
-  return object;
+  EdgeList result = {0};
+  return result;
 }
 
 Edge
 new_empty_edge() {
-  Edge object = {};
-  return object;
+  Edge result = {0};
+  return result;
 }
 
 Polygon
 new_empty_polygon() {
-  Polygon object = {};
-  return object;
+  Polygon result = {0};
+  return result;
+}
+
+Matrix3
+new_empty_matrix3() {
+  Matrix3 result = {0};
+  return result;
 }
 
 void
@@ -659,7 +683,7 @@ fill_polygon(Polygon* polygon, int scanline_y0, int scanline_y1) {
     }
 
     sort_active_edge_list(&active_edge_list);
-    print_edge_list(&active_edge_list);
+    //print_edge_list(&active_edge_list);
 
     assert((active_edge_list.count % 2) == 0);
     for (int i = 0; i < active_edge_list.count; i += 2) {
@@ -1052,17 +1076,29 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
 void
 draw_figure() {
 #if 1
-  Shape* shape = find_shape(L':');
+  Shape* shape = find_shape(L'▲');
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
-  Matrix3 w2vp_translate = {};
-  translate(&w2vp_translate, -shape_bb.lower_left.x + 100, -shape_bb.lower_left.y + 100);
-  Matrix3 w2vp_scale = {};
-  scale_pivot(&w2vp_scale, 1.0f, 1.0f, &shape_bb.lower_left);
-  Matrix3 w2vp_xform = {};
-  w2vp_xform = matrix3_mul(&w2vp_translate, &w2vp_scale);
-  apply_xform(shape, &w2vp_xform);
+
+  Matrix3 translate_to_origin = {0};
+  translate(&translate_to_origin, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
+  //apply_xform(shape, &translate_to_origin);
+
+//  Matrix3 scale_matrix = {0};
+//  scale(&scale_matrix, .5f, .5f);
+//  apply_xform(shape, &scale_matrix);
+
+  Matrix3 vflip = {0};
+  flip_vertical(&vflip);
+  Matrix3 xform = matrix3_mul(&translate_to_origin, &vflip);
+  //apply_xform(shape, &vflip);
+
+  Matrix3 translate_to_top = {0};
+  translate(&translate_to_top, 0, image_height);
+  xform = matrix3_mul(&xform, &translate_to_top);
+  apply_xform(shape, &xform);
+  //apply_xform(shape, &translate_to_top);
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
   clipping_boundary[ClipEdge_Left] = 0.0;
@@ -1072,7 +1108,7 @@ draw_figure() {
   assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
   assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
 
-#if 0
+#if 1
   Shape clipped_shape = clip_shape(shape, clipping_boundary);
   shape = &clipped_shape;
 #endif
