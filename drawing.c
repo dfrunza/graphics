@@ -174,6 +174,7 @@ global Color COLOR_BLUE = {.R=0, .G=0, .B=255};
 global Color WHITE = {.R=255, .G=255, .B=255};
 global Color BLACK = {.R=0, .G=0, .B=0};
 
+global uint32_t* image_buffer = 0;
 global int image_width = 800;
 // can't go more than 800? try drawing the pixel at left bottom corner and image_height = 900
 // and you'll see what I mean.
@@ -389,7 +390,7 @@ make_grayscale_rgb32(uint8_t intensity) {
 
 void
 draw_pixel_black(int x, int y) {
-  uint32_t* p = (uint32_t*)(image->data + (image->width*4)*y + 4*x);
+  uint32_t* p = image_buffer + image_width*y + x;
   *p = make_grayscale_rgb32(0);
 }
 
@@ -734,30 +735,30 @@ find_format(xcb_connection_t* conn, uint8_t depth, uint8_t bpp) {
 void
 fill_image(uint8_t intensity) {
   int i, j;
-  uint32_t* p = (uint32_t*)image->data;
-  for (int j = 0; j < image->height; ++j) {
-    for (int i = 0; i < image->width; ++i) {
+  uint32_t* p = image_buffer;
+  for (int j = 0; j < image_height; ++j) {
+    for (int i = 0; i < image_width; ++i) {
       *p++ = make_grayscale_rgb32(intensity);
     }
   }
 }
 
 xcb_image_t*
-create_image(xcb_connection_t* conn, int width, int height) {
+create_image(xcb_connection_t* conn) {
   const xcb_setup_t* setup = xcb_get_setup(conn);
-  uint8_t* image_data = push_array(uint8_t, width*height*4);
+  uint8_t* image_data = push_array(uint8_t, image_width*image_height*4);
   xcb_format_t* fmt = find_format(conn, 24, 32);
   if (fmt == NULL)
     return NULL;
 
-  return xcb_image_create(width, height,
+  return xcb_image_create(image_width, image_height,
                           XCB_IMAGE_FORMAT_Z_PIXMAP,
                           fmt->scanline_pad,
                           fmt->depth,
                           fmt->bits_per_pixel,
                           0, setup->image_byte_order,
                           XCB_IMAGE_ORDER_LSB_FIRST,
-                          image_data, width*height*4, image_data);
+                          image_data, image_width*image_height*4, image_data);
 }
 
 void
@@ -1085,6 +1086,29 @@ print_shape_points(Shape* shape) {
 }
 
 void
+transfer_image_buffer() {
+#if 0
+  for (int i = 0; i < image_height; ++i) {
+    uint32_t* src_line = image_buffer + image_width*i;
+    uint32_t* dest_line = (uint32_t*)image->data + image_width*i;
+    for (int j = 0; j < image_width; ++j) {
+      uint32_t p = src_line[j];
+      dest_line[j] = p;
+    }
+  }
+#else
+  for (int i = 0; i < image_height; ++i) {
+    uint32_t* src_line = image_buffer + image_width*i;
+    uint32_t* dest_line = (uint32_t*)image->data + image_width*(image_height-1) - image_width*i;
+    for (int j = 0; j < image_width; ++j) {
+      uint32_t p = src_line[j];
+      dest_line[j] = p;
+    }
+  }
+#endif
+}
+
+void
 draw_figure() {
 #if 1
   Shape* shape = find_shape(L'▲');
@@ -1097,47 +1121,13 @@ draw_figure() {
 #if 1
   Matrix3 translate_to_origin_xform = {0};
   translate(&translate_to_origin_xform, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
-
-  Matrix3 vflip_xform = {0};
-  flip_vertical(&vflip_xform);
-  Matrix3 xform = matrix3_mul(&vflip_xform, &translate_to_origin_xform);
-  apply_xform(shape, &xform);
-  printf("vflip & translate_to_origin\n>> ");
+  apply_xform(shape, &translate_to_origin_xform);
+  printf("translate_to_origin_xform\n>> ");
   print_shape_points(shape);
 
   Matrix3 scale_xform = {0};
   scale(&scale_xform, .5f, .5f);
-  Matrix3 translate_to_top = {0};
-  translate(&translate_to_top, 0, image_height-1);
-  xform = matrix3_mul(&translate_to_top, &scale_xform);
-
-  apply_xform(shape, &xform);
-  printf("scale & translate_to_top\n>> ");
-  print_shape_points(shape);
-#else
-  Matrix3 translate_to_origin = {0};
-  translate(&translate_to_origin, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
-  apply_xform(shape, &translate_to_origin);
-  printf("translate_to_origin\n>>");
-  print_shape_points(shape);
-
-//  Matrix3 scale_matrix = {0};
-//  scale(&scale_matrix, .5f, .5f);
-//  apply_xform(shape, &scale_matrix);
-
-  Matrix3 vflip = {0};
-  flip_vertical(&vflip);
-  Matrix3 xform = matrix3_mul(&vflip, &translate_to_origin);
-  apply_xform(shape, &xform);
-  printf("vflip * translate_to_origin\n>>");
-  print_shape_points(shape);
-
-  Matrix3 translate_to_top = {0};
-  translate(&translate_to_top, 0, image_height-1);
-  xform = matrix3_mul(&xform, &translate_to_top);
-  apply_xform(shape, &translate_to_top);
-  printf("translate_to_top\n>>");
-  print_shape_points(shape);
+  apply_xform(shape, &scale_xform);
 #endif
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
@@ -1194,12 +1184,13 @@ main(int argc, char** argv) {
   xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
   printf("root depth %d\n",screen->root_depth);
 
-  image = create_image(conn, image_width, image_height);
+  image = create_image(conn);
   if (image == NULL) {
     printf("ERROR\n");
     xcb_disconnect(conn);
     return 1;
   }
+  image_buffer = push_array(uint32_t, image_width*image_height);
 
   uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
   values[0] = screen->white_pixel;
@@ -1236,6 +1227,7 @@ main(int argc, char** argv) {
   /* Set background */
   fill_image(255);
   draw_figure();
+  transfer_image_buffer();
 
   xcb_image_put(conn, pixmap, gc, image, 0, 0, 0);
   xcb_copy_area(conn, pixmap, window, gc, 0, 0, 0, 0, image->width, image->height);
