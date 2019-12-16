@@ -9,7 +9,7 @@ from freetype import Face, \
 
 FONT = "PressStart2P.ttf"
 FONT_SIZE = 32
-CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
 CHAR_LIST += "~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./"
 CHAR_LIST += "▲♠♣★"
 

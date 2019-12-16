@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include <math.h>
+#include <wchar.h>
 
 #define local static
 #define global static
@@ -183,7 +184,7 @@ global Color WHITE = {.R=255, .G=255, .B=255};
 global Color BLACK = {.R=0, .G=0, .B=0};
 
 global uint32_t* image_buffer = 0;
-global int image_width = 200;
+global int image_width = 1000;
 global int image_height = 200;
 
 global SupersampleSurface supersample_surface = {0};
@@ -1142,12 +1143,114 @@ transfer_image_buffer() {
 }
 
 void
-draw_string(wchar_t* string) {
-  for (wchar_t* ch = string; *ch != L'\0'; ++ch) {
-    Shape* shape = find_shape(*ch);
-    //print_shape_points(shape);
+draw_string(wchar_t* string, SupersampleSurface* surface) {
+  for (int i = 0; i < sizeof_array(font_shapes); ++i) {
+    Shape* shape = &font_shapes[i];
     Rectangle shape_bb = get_bounding_box(shape);
+//    printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
+//          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
+    Matrix3 translate_to_origin_xform = {0};
+    translate(&translate_to_origin_xform, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
+    apply_xform(shape, &translate_to_origin_xform);
+  }
 
+  Matrix3 scale_xform = {0};
+  scale(&scale_xform, .012f, .012f);
+  int x_offset = 0, y_offset = 0;
+  for (wchar_t* ch = string; *ch != L'\0'; ++ch) {
+    if (*ch == L'\n') {
+      Shape* shape = find_shape(L'W');
+      Rectangle shape_bb = get_bounding_box(shape);
+      y_offset += shape_bb.upper_right.y - shape_bb.lower_left.y + 4;
+      x_offset = 0;
+      continue;
+    }
+    Shape* shape = find_shape(*ch);
+    apply_xform(shape, &scale_xform);
+    Rectangle shape_bb = get_bounding_box(shape);
+    Matrix3 translate_xform = {0};
+    translate(&translate_xform, x_offset, y_offset);
+    apply_xform(shape, &translate_xform);
+    x_offset += shape_bb.upper_right.x - shape_bb.lower_left.x + 2;
+
+    float clipping_boundary[ClipEdge_COUNT] = {0};
+    clipping_boundary[ClipEdge_Left] = 0.0;
+    clipping_boundary[ClipEdge_Right] = image_width-1;
+    clipping_boundary[ClipEdge_Top] = image_height-1;
+    clipping_boundary[ClipEdge_Bottom] = 0.0;
+    assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
+    assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
+
+#if 1
+    Shape clipped_shape = clip_shape(shape, clipping_boundary);
+    shape = &clipped_shape;
+#endif
+
+    if (shape->total_point_count > 0) {
+      Polygon polygon = new_empty_polygon();
+      make_polygon(&polygon, shape, surface->supersample_factor);
+      fill_polygon(&polygon, surface);
+
+      float subpixel_weight[3][3] = {
+        {1.f/24.f, 1.f/24.f, 1.f/24.f},
+        {1.f/24.f, 2.f/3.f, 1.f/24.f},
+        {1.f/24.f, 1.f/24.f, 1.f/24.f}
+      };
+      uint8_t** supersample_line = alloca(surface->supersample_factor*sizeof(uint8_t*));
+      uint8_t** supersample_box = alloca(surface->supersample_factor*sizeof(uint8_t*));
+      for (int i = 0; i < image_height; ++i) {
+        supersample_line[0] = surface->image_buffer + (surface->supersample_factor*i)*surface->image_width;
+        supersample_line[1] = surface->image_buffer + (surface->supersample_factor*i+1)*surface->image_width;
+        supersample_line[2] = surface->image_buffer + (surface->supersample_factor*i+1)*surface->image_width;
+        for (int j = 0; j < image_width; ++j) {
+          supersample_box[0] = supersample_line[0] + j*surface->supersample_factor;
+          supersample_box[1] = supersample_line[1] + j*surface->supersample_factor;
+          supersample_box[2] = supersample_line[2] + j*surface->supersample_factor;
+
+          float pixel_value = 0;
+
+          uint8_t subpixel_value = supersample_box[0][0];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[0][0];
+
+          subpixel_value = supersample_box[0][1];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[0][1];
+
+          subpixel_value = supersample_box[0][2];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[0][2];
+
+          subpixel_value = supersample_box[1][0];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[1][0];
+
+          subpixel_value = supersample_box[1][1];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[1][1];
+
+          subpixel_value = supersample_box[1][2];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[1][2];
+
+          subpixel_value = supersample_box[2][0];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[2][0];
+
+          subpixel_value = supersample_box[2][1];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[2][1];
+
+          subpixel_value = supersample_box[2][2];
+          assert (subpixel_value == 0 || subpixel_value == 1);
+          pixel_value += subpixel_value*subpixel_weight[2][2];
+
+          int pixel_intensity = 255.f - 200.f*pixel_value;
+          assert (pixel_intensity >= 0 && pixel_intensity <= 255);
+          draw_pixel_gray(j, i, pixel_intensity);
+        }
+      }
+    }
   }
 }
 
@@ -1166,12 +1269,12 @@ draw_figure(SupersampleSurface* surface) {
 
   Shape* shape = find_shape(L'A');
   Matrix3 scale_xform = {0};
-  scale(&scale_xform, .008f, .008f);
+  scale(&scale_xform, .01f, .01f);
   apply_xform(shape, &scale_xform);
 
-  Matrix3 translate_xform = {0};
-  translate(&translate_xform, 10, 10);
-  apply_xform(shape, &translate_xform);
+//  Matrix3 translate_xform = {0};
+//  translate(&translate_xform, 10, 10);
+//  apply_xform(shape, &translate_xform);
 #endif
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
@@ -1209,7 +1312,6 @@ draw_figure(SupersampleSurface* surface) {
         supersample_box[2] = supersample_line[2] + j*surface->supersample_factor;
 
         float pixel_value = 0;
-        //float pixel_weight = 1.f/(float)(surface->supersample_factor*surface->supersample_factor);
 
         uint8_t subpixel_value = supersample_box[0][0];
         assert (subpixel_value == 0 || subpixel_value == 1);
@@ -1257,17 +1359,6 @@ draw_figure(SupersampleSurface* surface) {
     }
     printf("\n");
   }
-
-#if 0
-  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
-       clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
-  line(clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top],
-       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
-  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Bottom],
-       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Bottom], &COLOR_BLUE);
-  line(clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Top],
-       clipping_boundary[ClipEdge_Right], clipping_boundary[ClipEdge_Top], &COLOR_BLUE);
-#endif
 }
 
 #if 1
@@ -1339,8 +1430,8 @@ main(int argc, char** argv) {
 
   fill_image(255);
   clear_supersample_surface(&supersample_surface);
-  draw_figure(&supersample_surface);
-  //draw_string(L"ab");
+  //draw_figure(&supersample_surface);
+  draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789", &supersample_surface);
   transfer_image_buffer();
 
   xcb_image_put(conn, pixmap, gc, image, 0, 0, 0);
