@@ -7,11 +7,11 @@ from freetype import Face, \
 
 # sudo -H pip3 install shapely freetype-py fonttools numpy
 
+FONT = "Fixedsys.ttf"
+FONT_SIZE = 32
 CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 CHAR_LIST += "~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./"
 CHAR_LIST += "▲♠♣★"
-FONT = "DejaVuSans.ttf"
-FONT_SIZE = 32
 
 def escape_character(character):
   escapable_chars = ("\\", "\'", )
