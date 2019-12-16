@@ -1164,9 +1164,9 @@ draw_figure(SupersampleSurface* surface) {
     apply_xform(shape, &translate_to_origin_xform);
   }
 
-  Shape* shape = find_shape(L'8');
+  Shape* shape = find_shape(L'A');
   Matrix3 scale_xform = {0};
-  scale(&scale_xform, .02f, .02f);
+  scale(&scale_xform, .008f, .008f);
   apply_xform(shape, &scale_xform);
 
   Matrix3 translate_xform = {0};
@@ -1192,6 +1192,11 @@ draw_figure(SupersampleSurface* surface) {
     make_polygon(&polygon, shape, surface->supersample_factor);
     fill_polygon(&polygon, surface);
 
+    float subpixel_weight[3][3] = {
+      {1.f/24.f, 1.f/24.f, 1.f/24.f},
+      {1.f/24.f, 2.f/3.f, 1.f/24.f},
+      {1.f/24.f, 1.f/24.f, 1.f/24.f}
+    };
     uint8_t** supersample_line = alloca(surface->supersample_factor*sizeof(uint8_t*));
     uint8_t** supersample_box = alloca(surface->supersample_factor*sizeof(uint8_t*));
     for (int i = 0; i < image_height; ++i) {
@@ -1204,55 +1209,53 @@ draw_figure(SupersampleSurface* surface) {
         supersample_box[2] = supersample_line[2] + j*surface->supersample_factor;
 
         float pixel_value = 0;
-        float pixel_weight = 1.f/(float)(surface->supersample_factor*surface->supersample_factor);
+        //float pixel_weight = 1.f/(float)(surface->supersample_factor*surface->supersample_factor);
 
         uint8_t subpixel_value = supersample_box[0][0];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[0][0];
 
         subpixel_value = supersample_box[0][1];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[0][1];
 
         subpixel_value = supersample_box[0][2];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[0][2];
 
         subpixel_value = supersample_box[1][0];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[1][0];
 
         subpixel_value = supersample_box[1][1];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[1][1];
 
         subpixel_value = supersample_box[1][2];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[1][2];
 
         subpixel_value = supersample_box[2][0];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[2][0];
 
         subpixel_value = supersample_box[2][1];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[2][1];
 
         subpixel_value = supersample_box[2][2];
         assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*pixel_weight;
+        pixel_value += subpixel_value*subpixel_weight[2][2];
 
         int pixel_intensity = 255.f - 255.f*pixel_value;
         assert (pixel_intensity >= 0 && pixel_intensity <= 255);
         if (pixel_intensity != 255) {
           printf("%d, ", pixel_intensity);
-          if (pixel_intensity < 0) {
-            int x = 0x0;
-          }
         }
         draw_pixel_gray(j, i, pixel_intensity);
       }
     }
+    printf("\n");
   }
 
 #if 0
