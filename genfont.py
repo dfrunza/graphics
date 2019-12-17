@@ -7,7 +7,7 @@ from freetype import Face, \
 
 # sudo -H pip3 install shapely freetype-py fonttools numpy
 
-FONT = "PressStart2P.ttf"
+FONT = "Fixedsys.ttf"
 FONT_SIZE = 32
 CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
 CHAR_LIST += "~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./"

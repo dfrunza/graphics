@@ -1154,8 +1154,12 @@ draw_string(wchar_t* string, SupersampleSurface* surface) {
     apply_xform(shape, &translate_to_origin_xform);
   }
 
+  // PressStart2P best results are at 0.008 scale.
+  // Courier best results are at 0.016 scale.
+  // Terminal best results are at 0.016 scale.
+  // Fixedsys best results are at 0.016 scale.
   Matrix3 scale_xform = {0};
-  scale(&scale_xform, .012f, .012f);
+  scale(&scale_xform, .016f, .016f);
   int x_offset = 0, y_offset = 0;
   for (wchar_t* ch = string; *ch != L'\0'; ++ch) {
     if (*ch == L'\n') {
@@ -1192,9 +1196,9 @@ draw_string(wchar_t* string, SupersampleSurface* surface) {
       fill_polygon(&polygon, surface);
 
       float subpixel_weight[3][3] = {
-        {1.f/24.f, 1.f/24.f, 1.f/24.f},
-        {1.f/24.f, 2.f/3.f, 1.f/24.f},
-        {1.f/24.f, 1.f/24.f, 1.f/24.f}
+        {1.f/9.f, 1.f/9.f, 1.f/9.f},
+        {1.f/9.f, 1.f/9.f, 1.f/9.f},
+        {1.f/9.f, 1.f/9.f, 1.f/9.f}
       };
       uint8_t** supersample_line = alloca(surface->supersample_factor*sizeof(uint8_t*));
       uint8_t** supersample_box = alloca(surface->supersample_factor*sizeof(uint8_t*));
@@ -1351,13 +1355,9 @@ draw_figure(SupersampleSurface* surface) {
 
         int pixel_intensity = 255.f - 255.f*pixel_value;
         assert (pixel_intensity >= 0 && pixel_intensity <= 255);
-        if (pixel_intensity != 255) {
-          printf("%d, ", pixel_intensity);
-        }
         draw_pixel_gray(j, i, pixel_intensity);
       }
     }
-    printf("\n");
   }
 }
 
@@ -1431,7 +1431,7 @@ main(int argc, char** argv) {
   fill_image(255);
   clear_supersample_surface(&supersample_surface);
   //draw_figure(&supersample_surface);
-  draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789", &supersample_surface);
+  draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &supersample_surface);
   transfer_image_buffer();
 
   xcb_image_put(conn, pixmap, gc, image, 0, 0, 0);
