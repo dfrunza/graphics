@@ -1159,7 +1159,7 @@ draw_string(wchar_t* string, SupersampleSurface* surface) {
   // Terminal best results are at 0.016 scale.
   // Fixedsys best results are at 0.016 scale.
   Matrix3 scale_xform = {0};
-  scale(&scale_xform, .016f, .016f);
+  scale(&scale_xform, 1/16.f, 1/16.f);
   int x_offset = 0, y_offset = 0;
   for (wchar_t* ch = string; *ch != L'\0'; ++ch) {
     if (*ch == L'\n') {
