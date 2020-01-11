@@ -1196,9 +1196,9 @@ draw_string(wchar_t* string, SupersampleSurface* surface) {
       fill_polygon(&polygon, surface);
 
       float subpixel_weight[3][3] = {
-        {1.f/9.f, 1.f/9.f, 1.f/9.f},
-        {1.f/9.f, 1.f/9.f, 1.f/9.f},
-        {1.f/9.f, 1.f/9.f, 1.f/9.f}
+        {0.f, 1.f/8.f, 0.f},
+        {1.f/8.f, 1.f/2.f, 1.f/8.f},
+        {0.f, 1.f/8.f, 0.f}
       };
       uint8_t** supersample_line = alloca(surface->supersample_factor*sizeof(uint8_t*));
       uint8_t** supersample_box = alloca(surface->supersample_factor*sizeof(uint8_t*));
@@ -1429,9 +1429,9 @@ main(int argc, char** argv) {
   xcb_flush(conn);
 
   fill_image(255);
-  clear_supersample_surface(&supersample_surface);
+  //clear_supersample_surface(&supersample_surface);
   //draw_figure(&supersample_surface);
-  draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &supersample_surface);
+  //draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &supersample_surface);
   transfer_image_buffer();
 
   xcb_image_put(conn, pixmap, gc, image, 0, 0, 0);
