@@ -7,7 +7,7 @@ from freetype import Face, \
 
 # sudo -H pip3 install shapely freetype-py fonttools numpy
 
-FONT = "fonts/" "Px437_Verite_8x16.ttf"
+FONT_NAME = "Px437_IBM_VGA8"
 FONT_SIZE = 16
 CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
 CHAR_LIST += "~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./"
@@ -20,8 +20,9 @@ def escape_character(character):
   return character
 
 c_source_file = open("font_shapes.c", "w")
+c_source_file.write("#define FONT_NAME L\"%s\"\n\n" % FONT_NAME)
 
-face = Face(FONT)
+face = Face("fonts/%s.ttf" % FONT_NAME)
 face.set_char_size(FONT_SIZE*FONT_SIZE)
 
 shape_id = 0
