@@ -1425,9 +1425,9 @@ main(int argc, char** argv) {
   xcb_flush(conn);
 
   fill_image(255);
-  //clear_supersample_surface(&supersample_surface);
+  clear_supersample_surface(&supersample_surface);
   //draw_figure(&supersample_surface);
-  //draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &supersample_surface);
+  draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &supersample_surface);
   transfer_image_buffer();
 
   xcb_image_put(conn, pixmap, gc, image, 0, 0, 0);
