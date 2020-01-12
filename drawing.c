@@ -1154,10 +1154,6 @@ draw_string(wchar_t* string, SupersampleSurface* surface) {
     apply_xform(shape, &translate_to_origin_xform);
   }
 
-  // PressStart2P best results are at 0.008 scale.
-  // Courier best results are at 0.016 scale.
-  // Terminal best results are at 0.016 scale.
-  // Fixedsys best results are at 0.016 scale.
   Matrix3 scale_xform = {0};
   scale(&scale_xform, 1/16.f, 1/16.f);
   int x_offset = 0, y_offset = 0;
