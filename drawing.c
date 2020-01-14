@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
+#include <float.h>
 #include <math.h>
 #include <wchar.h>
 
@@ -67,28 +68,28 @@ typedef struct {
 } Shape;
 
 typedef struct Edge {
-  int x_intercept;
-  int x_accumulator;
+  float x_intercept;
+  float x_accumulator;
   union {
     struct {
-      int x0;
-      int y0;
-      int z0;
+      float x0;
+      float y0;
+      float z0;
     };
-    iPoint start_point;
+    Point start_point;
   };
   union {
     struct {
-      int x1;
-      int y1;
-      int z1;
+      float x1;
+      float y1;
+      float z1;
     };
-    iPoint end_point;
+    Point end_point;
   };
   union {
     struct {
-      int delta_x;
-      int delta_y;
+      float delta_x;
+      float delta_y;
     };
     struct {
       struct Edge* prev_edge;
@@ -152,11 +153,17 @@ typedef enum {
 } ClippingEdge;
 
 typedef struct {
-  int supersample_factor;
-  uint8_t* image_buffer;
-  int image_width;
-  int image_height;
-} SupersampleSurface;
+  //int supersample_factor;
+  uint8_t* pixel_buffer;
+  int x_pixel_count;
+  int y_pixel_count;
+  float x_min;
+  float x_max;
+  float y_min;
+  float y_max;
+  float width;
+  float height;
+} DrawingSurface;
 
 #define abs(i) \
   ((i) > 0 ? (i) : -(i))
@@ -187,7 +194,7 @@ global uint32_t* image_buffer = 0;
 global int image_width = 1000;
 global int image_height = 200;
 
-global SupersampleSurface supersample_surface = {0};
+global DrawingSurface drawing_surface = {0};
 
 iPoint
 convert_point_ftoi(Point* f_pt) {
@@ -278,7 +285,7 @@ apply_xform(Shape* shape, Matrix3* T) {
 }
 
 void
-translate(Matrix3* T, float t_x, float t_y) {
+mk_translate_matrix(Matrix3* T, float t_x, float t_y) {
   Vector3* col = &T->col1;
   col->x = 1.f;
   col->y = 0.f;
@@ -296,7 +303,7 @@ translate(Matrix3* T, float t_x, float t_y) {
 }
 
 void
-rotate(Matrix3* T, float rotation_angle) {
+mk_rotate_matrix(Matrix3* T, float rotation_angle) {
   float sin_phi = sinf(rotation_angle);
   float cos_phi = cosf(rotation_angle);
 
@@ -317,7 +324,7 @@ rotate(Matrix3* T, float rotation_angle) {
 }
 
 void
-rotate_pivot(Matrix3* T, float rotation_angle, Point* pivot_pt) {
+mk_pivot_rotate_matrix(Matrix3* T, float rotation_angle, Point* pivot_pt) {
   float sin_phi = sinf(rotation_angle);
   float cos_phi = cosf(rotation_angle);
 
@@ -338,7 +345,7 @@ rotate_pivot(Matrix3* T, float rotation_angle, Point* pivot_pt) {
 }
 
 void
-scale(Matrix3* T, float s_x, float s_y) {
+mk_scale_matrix(Matrix3* T, float s_x, float s_y) {
   Vector3* col = &T->col1;
   col->x = s_x;
   col->y = 0.f;
@@ -356,7 +363,7 @@ scale(Matrix3* T, float s_x, float s_y) {
 }
 
 void
-scale_pivot(Matrix3* T, float s_x, float s_y, Point* pivot_pt) {
+mk_pivot_scale_matrix(Matrix3* T, float s_x, float s_y, Point* pivot_pt) {
   Vector3* col = &T->col1;
   col->x = s_x;
   col->y = 0.f;
@@ -374,7 +381,7 @@ scale_pivot(Matrix3* T, float s_x, float s_y, Point* pivot_pt) {
 }
 
 void
-flip_vertical(Matrix3* T) {
+mk_flip_vertical_matrix(Matrix3* T) {
   Vector3* col = &T->col1;
   col->x = 1.f;
   col->y = 0.f;
@@ -410,16 +417,21 @@ draw_pixel_gray(int x, int y, uint8_t intensity) {
 }
 
 void
-clear_supersample_surface(SupersampleSurface* surface) {
-  int surface_buffer_length = surface->image_width*surface->image_height;
+clear_drawing_surface(DrawingSurface* surface) {
+  int surface_buffer_length = surface->x_pixel_count*surface->y_pixel_count;
   for (int i = 0; i < surface_buffer_length; ++i) {
-    surface->image_buffer[i] = 0;
+    surface->pixel_buffer[i] = 0;
   }
 }
 
+int
+truncate_float(float f) {
+  return (int)f;
+}
+
 void
-set_supersample_pixel(SupersampleSurface* surface, int x, int y) {
-  uint8_t* p = surface->image_buffer + surface->image_width*y + x;
+set_pixel_drawing_surface(DrawingSurface* surface, float x, float y) {
+  uint8_t* p = surface->pixel_buffer + surface->x_pixel_count*truncate_float(y) + truncate_float(x);
   *p = 1;
 }
 
@@ -563,7 +575,7 @@ new_empty_polygon() {
 }
 
 void
-make_polygon(Polygon* polygon, Shape* shape, int supersample_factor) {
+make_polygon(Polygon* polygon, Shape* shape) {
   polygon->contour_vertex_count = push_array(int, shape->n_contours);
   polygon->n_contours = shape->n_contours;
   polygon->contours = push_array(Point*, shape->n_contours);
@@ -603,12 +615,8 @@ make_polygon(Polygon* polygon, Shape* shape, int supersample_factor) {
     Edge* prev_edge = next_edge;
     for (int j = 0; j < polygon->contour_vertex_count[i]; ++j) {
       Edge* edge = &edge_list[i].entries[edge_list[i].count];
-      edge->start_point = convert_point_ftoi(&polygon->contours[i][j]);
-      edge->start_point.x *= supersample_factor;
-      edge->start_point.y *= supersample_factor;
-      edge->end_point = convert_point_ftoi(&polygon->contours[i][j+1]);
-      edge->end_point.x *= supersample_factor;
-      edge->end_point.y *= supersample_factor;
+      edge->start_point = polygon->contours[i][j];
+      edge->end_point = polygon->contours[i][j+1];
       if (edge->y1 == edge->y0) {
         continue;
       }
@@ -642,7 +650,7 @@ void
 print_edge_list(EdgeList* edge_list) {
   for (int i = 0; i < edge_list->count; ++i) {
     Edge* edge = &edge_list->entries[i];
-    printf("((x0=%d, y0=%d), (x1=%d,y1=%d), x_intercept=%d)\n",
+    printf("((x0=%.1f, y0=%.1f), (x1=%.1f,y1=%.1f), x_intercept=%.1f)\n",
            edge->x0, edge->y0, edge->x1, edge->y1, edge->x_intercept);
   }
 }
@@ -654,7 +662,7 @@ new_empty_matrix3() {
 }
 
 void
-fill_polygon(Polygon* polygon, SupersampleSurface* surface) {
+fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface) {
   EdgeList* edge_list = polygon->edge_list;
   for (int i = 0; i < polygon->n_contours; ++i) {
     for (int j = 0; j < edge_list[i].count; ++j) {
@@ -664,13 +672,13 @@ fill_polygon(Polygon* polygon, SupersampleSurface* surface) {
       if (edge->y1 > edge->y0) {
         edge->x_intercept = edge->x0;
         if (next_edge->y1 > edge->y1) {
-          edge->y1 -= 1;
+          //edge->y1 -= 1.f;
         }
       }
       else if (edge->y1 < edge->y0) {
         edge->x_intercept = edge->x1;
         if (prev_edge->y0 > edge->y0) {
-          prev_edge->y1 += 1;
+          //prev_edge->y1 += 1.f;
         }
       }
       else assert(false);
@@ -679,17 +687,17 @@ fill_polygon(Polygon* polygon, SupersampleSurface* surface) {
     //print_edge_list(&edge_list[i]);
   }
 
-  EdgeList edge_heap = new_empty_edge_list();
+  EdgeList edge_heap = {0};
   edge_heap.entries = push_array(Edge, polygon->total_vertex_count);
   edge_heap.count = 0;
   edge_heap.entries[0] = new_empty_edge();
-  edge_heap.entries[0].y0 = INT_MIN;
+  edge_heap.entries[0].y0 = FLT_MIN;
   for (int i = 0; i < polygon->n_contours; ++i) {
     for (int j = 0; j < edge_list[i].count; ++j) {
       Edge* edge = &edge_list[i].entries[j];
       assert (edge->y1 != edge->y0);
       if (edge->y1 < edge->y0) {
-        iPoint p = edge->start_point;
+        Point p = edge->start_point;
         edge->start_point = edge->end_point;
         edge->end_point = p;
       }
@@ -706,12 +714,14 @@ fill_polygon(Polygon* polygon, SupersampleSurface* surface) {
   active_edge_list.entries += 1;
   active_edge_list.count = 0;
   active_edge_list.entries[-1] = new_empty_edge();
-  active_edge_list.entries[-1].x_intercept = INT_MIN;
+  active_edge_list.entries[-1].x_intercept = FLT_MIN;
   active_edge_list.entries[0] = new_empty_edge();
-  active_edge_list.entries[0].x_intercept = INT_MAX;
+  active_edge_list.entries[0].x_intercept = 1.f;
 
   assert(edge_heap.count >= 2);
-  int y = 0;
+  float y = drawing_surface->y_min;
+  float x_step = drawing_surface->width / drawing_surface->x_pixel_count;
+  float y_step = drawing_surface->height / drawing_surface->y_pixel_count;
   do {
     //printf("--------------- %d -----------------\n", y);
     for (int i = 0; i < active_edge_list.count; ++i) {
@@ -729,11 +739,11 @@ fill_polygon(Polygon* polygon, SupersampleSurface* surface) {
       //printf("left_edge=(%d,%d)\n", left_edge->x_intercept, y);
       //printf("right_edge=(%d,%d)\n", right_edge->x_intercept, y);
 
-      //draw_pixel_black(left_edge->x_intercept, y);
-      set_supersample_pixel(surface, left_edge->x_intercept, y);
-      for (int x = left_edge->x_intercept; x < right_edge->x_intercept; ++x) {
-        //draw_pixel_black(x, y);
-        set_supersample_pixel(surface, x, y);
+      set_pixel_drawing_surface(drawing_surface, left_edge->x_intercept, y);
+      for (float x = left_edge->x_intercept;
+           x < right_edge->x_intercept;
+           x += x_step) {
+        set_pixel_drawing_surface(drawing_surface, x, y);
       }
     }
     for (int i = 0; i < active_edge_list.count;) {
@@ -744,13 +754,13 @@ fill_polygon(Polygon* polygon, SupersampleSurface* surface) {
       }
       ++i;
     }
-    ++y;
+    y += y_step;
     while (edge_heap.count > 0 && edge_heap.entries[1].y0 <= y) {
       Edge edge = pop_polygon_edge(&edge_heap);
       edge.x_accumulator = 0;
       insert_active_edge(&active_edge_list, &edge);
     }
-  } while (y < surface->image_height-1);
+  } while (y < drawing_surface->y_max);
 }
 
 
@@ -1120,7 +1130,7 @@ print_shape_points(Shape* shape) {
 }
 
 void
-transfer_image_buffer() {
+vflip_image_buffer() {
 #if 0
   for (int i = 0; i < image_height; ++i) {
     uint32_t* src_line = image_buffer + image_width*i;
@@ -1142,20 +1152,21 @@ transfer_image_buffer() {
 #endif
 }
 
+#if 0
 void
-draw_string(wchar_t* string, SupersampleSurface* surface) {
+draw_string(wchar_t* string, DrawingSurface* surface) {
   for (int i = 0; i < sizeof_array(font_shapes); ++i) {
     Shape* shape = &font_shapes[i];
     Rectangle shape_bb = get_bounding_box(shape);
 //    printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
 //          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
     Matrix3 translate_to_origin_xform = {0};
-    translate(&translate_to_origin_xform, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
+    mk_translate_matrix(&translate_to_origin_xform, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
     apply_xform(shape, &translate_to_origin_xform);
   }
 
   Matrix3 scale_xform = {0};
-  scale(&scale_xform, 1/16.f, 1/16.f);
+  mk_scale_matrix(&scale_xform, 1/16.f, 1/16.f);
   int x_offset = 0, y_offset = 0;
   for (wchar_t* ch = string; *ch != L'\0'; ++ch) {
     if (*ch == L'\n') {
@@ -1169,7 +1180,7 @@ draw_string(wchar_t* string, SupersampleSurface* surface) {
     apply_xform(shape, &scale_xform);
     Rectangle shape_bb = get_bounding_box(shape);
     Matrix3 translate_xform = {0};
-    translate(&translate_xform, x_offset, y_offset);
+    mk_translate_matrix(&translate_xform, x_offset, y_offset);
     apply_xform(shape, &translate_xform);
     x_offset += shape_bb.upper_right.x - shape_bb.lower_left.x + 2;
 
@@ -1253,43 +1264,53 @@ draw_string(wchar_t* string, SupersampleSurface* surface) {
     }
   }
 }
-
-void
-draw_figure(SupersampleSurface* surface) {
-#if 1
-  for (int i = 0; i < sizeof_array(font_shapes); ++i) {
-    Shape* shape = &font_shapes[i];
-    Rectangle shape_bb = get_bounding_box(shape);
-//    printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
-//          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
-    Matrix3 translate_to_origin_xform = {0};
-    translate(&translate_to_origin_xform, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
-    apply_xform(shape, &translate_to_origin_xform);
-  }
-
-  Shape* shape = find_shape(L'A');
-  Matrix3 scale_xform = {0};
-  scale(&scale_xform, .01f, .01f);
-  apply_xform(shape, &scale_xform);
-
-//  Matrix3 translate_xform = {0};
-//  translate(&translate_xform, 10, 10);
-//  apply_xform(shape, &translate_xform);
 #endif
 
+void
+draw_figure(DrawingSurface* surface) {
+  Shape* shape = find_shape(L'T');
+  Rectangle shape_bb = get_bounding_box(shape);
+  printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
+        shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
+
+  Rectangle window = {0};
+  window.lower_left = shape_bb.lower_left;
+  window.upper_right.x = window.lower_left.x + 200.f;
+  window.upper_right.y = window.lower_left.y + 200.f;
+
+  float window_width = window.upper_right.x - window.lower_left.x;
+  float window_height = window.upper_right.y - window.lower_left.y;
+  Point window_center_point = {0};
+  window_center_point.x = window.lower_left.x + window_width/2.f;
+  window_center_point.y = window.lower_left.y + window_height/2.f;
+
   float clipping_boundary[ClipEdge_COUNT] = {0};
-  clipping_boundary[ClipEdge_Left] = 0.0;
-  clipping_boundary[ClipEdge_Right] = image_width-1;
-  clipping_boundary[ClipEdge_Top] = image_height-1;
-  clipping_boundary[ClipEdge_Bottom] = 0.0;
+  clipping_boundary[ClipEdge_Left] = window.lower_left.x;
+  clipping_boundary[ClipEdge_Right] = window.upper_right.x;
+  clipping_boundary[ClipEdge_Top] = window.upper_right.y;
+  clipping_boundary[ClipEdge_Bottom] = window.lower_left.y;
   assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
   assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
 
-#if 1
   Shape clipped_shape = clip_shape(shape, clipping_boundary);
   shape = &clipped_shape;
-#endif
 
+  Matrix3 translate_window = {0};
+  mk_translate_matrix(&translate_window, -window_center_point.x, -window_center_point.y);
+  apply_xform(shape, &translate_window);
+
+  Matrix3 scale_window = {0};
+  mk_scale_matrix(&scale_window, 1.f/window_width, 1.f/window_height);
+  apply_xform(shape, &scale_window);
+
+  if (shape->total_point_count > 0) {
+    Polygon polygon = {0};
+    make_polygon(&polygon, shape);
+    fill_polygon(&polygon, &drawing_surface);
+  }
+
+  int x = 0x0;
+#if 0
   if (shape->total_point_count > 0) {
     Polygon polygon = new_empty_polygon();
     make_polygon(&polygon, shape, surface->supersample_factor);
@@ -1355,6 +1376,7 @@ draw_figure(SupersampleSurface* surface) {
       }
     }
   }
+#endif
 }
 
 #if 1
@@ -1387,10 +1409,16 @@ main(int argc, char** argv) {
   }
   image_buffer = push_array(uint32_t, image_width*image_height);
 
-  supersample_surface.supersample_factor = 3;
-  supersample_surface.image_width = image_width*supersample_surface.supersample_factor;
-  supersample_surface.image_height = image_height*supersample_surface.supersample_factor;
-  supersample_surface.image_buffer = push_array(uint8_t, supersample_surface.image_width*supersample_surface.image_height);
+  //drawing_surface.supersample_factor = 1;
+  drawing_surface.x_pixel_count = 200;
+  drawing_surface.y_pixel_count = 200;
+  drawing_surface.x_min = -1.f;
+  drawing_surface.x_max = 1.f;
+  drawing_surface.y_min = -1.f;
+  drawing_surface.y_max = 1.f;
+  drawing_surface.width = drawing_surface.x_max - drawing_surface.x_min;
+  drawing_surface.height = drawing_surface.y_max - drawing_surface.y_min;
+  drawing_surface.pixel_buffer = push_array(uint8_t, drawing_surface.x_pixel_count*drawing_surface.y_pixel_count);
 
   uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
   values[0] = screen->white_pixel;
@@ -1425,10 +1453,10 @@ main(int argc, char** argv) {
   xcb_flush(conn);
 
   fill_image(255);
-  clear_supersample_surface(&supersample_surface);
-  //draw_figure(&supersample_surface);
-  draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &supersample_surface);
-  transfer_image_buffer();
+  clear_drawing_surface(&drawing_surface);
+  draw_figure(&drawing_surface);
+  //draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &drawing_surface);
+  vflip_image_buffer();
 
   xcb_image_put(conn, pixmap, gc, image, 0, 0, 0);
   xcb_copy_area(conn, pixmap, window, gc, 0, 0, 0, 0, image->width, image->height);
