@@ -1,3 +1,4 @@
 .vimprj/
+.idea/
 /bin/
 /font_shapes.c
