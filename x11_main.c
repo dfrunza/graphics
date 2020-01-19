@@ -53,7 +53,6 @@ push_object(Arena* arena, size_t block_size) {
   (type*) push_object(&arena, sizeof(type)*(count))
 
 global Arena arena;
-global xcb_image_t* x11_image;
 
 global Color COLOR_RED = {.R=255, .G=0, .B=0};
 global Color COLOR_GREEN = {.R=255, .G=0, .B=0};
@@ -94,6 +93,7 @@ create_x11_image(xcb_connection_t* conn, DeviceWindow* device_window) {
 void
 blit_device_window_to_x11_image(DeviceWindow* device_window, xcb_image_t* x11_image) {
 #if 0
+  // verbatim
   for (int i = 0; i < image_height; ++i) {
     uint32_t* src_line = image_buffer + image_width*i;
     uint32_t* dest_line = (uint32_t*)image->data + image_width*i;
@@ -103,6 +103,7 @@ blit_device_window_to_x11_image(DeviceWindow* device_window, xcb_image_t* x11_im
     }
   }
 #else
+  // vertically flipped
   for (int i = 0; i < device_window->height; ++i) {
     uint32_t* src_line = device_window->pixel_buffer + device_window->width*i;
     uint32_t* dest_line = (uint32_t*)x11_image->data + device_window->width*(device_window->height-1) - device_window->width*i;
@@ -142,7 +143,7 @@ main(int argc, char** argv) {
   device_window.bits_per_pixel = device_window.bytes_per_pixel*8;
   device_window.depth = 24; // FIXME: What is this and why should it be equal to 24?
 
-  x11_image = create_x11_image(connection, &device_window);
+  xcb_image_t* x11_image = create_x11_image(connection, &device_window);
   if (x11_image == 0) {
     printf("ERROR\n");
     xcb_disconnect(connection);

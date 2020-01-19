@@ -226,14 +226,6 @@ draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t intensity) {
   *p = make_grayscale_rgb32(intensity);
 }
 
-//void
-//clear_drawing_surface(DrawingSurface* surface) {
-//  int surface_buffer_length = surface->x_pixel_count*surface->y_pixel_count;
-//  for (int i = 0; i < surface_buffer_length; ++i) {
-//    surface->pixel_buffer[i] = 0;
-//  }
-//}
-
 int
 truncate_float(float f) {
   return (int)f;
@@ -247,31 +239,7 @@ set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
   draw_pixel_black(device_window, pixel_x, pixel_y);
-//  uint8_t* p = drawing_surface->pixel_buffer + drawing_surface->x_pixel_count*pixel_y + pixel_x;
-//  *p = 1;
 }
-
-//TODO: Buggy; draw_pixel_red(2, 2) draws two pixels instead of one.
-//void
-//draw_pixel_rgb(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
-//  uint32_t* p = (uint32_t*)(image->data + (image->width*4)*y + 4*x);
-//  *p = ((uint32_t)B | (uint32_t)G << 8 | (uint32_t)R << 16);
-//}
-//
-//void
-//draw_pixel_red(int x, int y) {
-//  draw_pixel_rgb(x, y, COLOR_RED.R, COLOR_RED.G, COLOR_RED.B);
-//}
-//
-//void
-//draw_pixel_green(int x, int y) {
-//  draw_pixel_rgb(x, y, COLOR_GREEN.R, COLOR_GREEN.G, COLOR_GREEN.B);
-//}
-//
-//void
-//draw_pixel_blue(int x, int y) {
-//  draw_pixel_rgb(x, y, COLOR_BLUE.R, COLOR_BLUE.G, COLOR_BLUE.B);
-//}
 
 bool
 compare_edge_is_less(Edge* edge_A, Edge* edge_B) {
@@ -466,12 +434,6 @@ update_x_intercept(Edge* edge, float y) {
   if (edge->m != INFINITY) {
     edge->x_intercept = (y - edge->b)/edge->m;
   }
-//  edge->x_accumulator += edge->delta_x;
-//  float x_increment = edge->x_accumulator / edge->delta_y;
-//  if (fabs(edge->x_accumulator) >= fabs(edge->delta_y)) {
-//    edge->x_intercept += x_increment;
-//    edge->x_accumulator -= x_increment * edge->delta_y;
-//  }
 }
 
 Matrix3
@@ -486,7 +448,7 @@ y_intercept_at_scanline(DrawingSurface* drawing_surface, int scanline_nr) {
 }
 
 void
-fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* device_window) {
+draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* device_window) {
   EdgeList* edge_list = polygon->edge_list;
   for (int i = 0; i < polygon->n_contours; ++i) {
     for (int j = 0; j < edge_list[i].count; ++j) {
@@ -583,7 +545,6 @@ fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
     y = y_intercept_at_scanline(drawing_surface, scanline_nr);
     while (edge_heap.count > 0 && edge_heap.entries[1].y0 <= y) {
       Edge edge = pop_polygon_edge(&edge_heap);
-      //edge.x_accumulator = 0;
       insert_active_edge(&active_edge_list, &edge);
     }
   } while (scanline_nr < drawing_surface->y_pixel_count);
@@ -591,7 +552,7 @@ fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
 
 
 void
-fill_device_window(DeviceWindow* device_window, uint8_t intensity) {
+clear_device_window(DeviceWindow* device_window, uint8_t intensity) {
   int i, j;
   uint32_t* p = device_window->pixel_buffer;
   for (int j = 0; j < device_window->height; ++j) {
@@ -601,7 +562,7 @@ fill_device_window(DeviceWindow* device_window, uint8_t intensity) {
   }
 }
 
-#if 0
+#if 0/*>--*/
 void
 line(int x0, int y0, int x1, int y1) {
   int abs_dx = abs(x1 - x0);
@@ -738,7 +699,7 @@ ellipse(int center_x, int center_y, int radius_x, int radius_y) {
     }
   }
 }
-#endif
+#endif/*--<*/
 
 Rectangle
 get_bounding_box(Shape* shape) {
@@ -927,120 +888,6 @@ print_shape_points(Shape* shape) {
   printf("\n");
 }
 
-#if 0
-void
-draw_string(wchar_t* string, DrawingSurface* surface) {
-  for (int i = 0; i < sizeof_array(font_shapes); ++i) {
-    Shape* shape = &font_shapes[i];
-    Rectangle shape_bb = get_bounding_box(shape);
-//    printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
-//          shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
-    Matrix3 translate_to_origin_xform = {0};
-    mk_translate_matrix(&translate_to_origin_xform, -shape_bb.lower_left.x, -shape_bb.lower_left.y);
-    apply_xform(shape, &translate_to_origin_xform);
-  }
-
-  Matrix3 scale_xform = {0};
-  mk_scale_matrix(&scale_xform, 1/16.f, 1/16.f);
-  int x_offset = 0, y_offset = 0;
-  for (wchar_t* ch = string; *ch != L'\0'; ++ch) {
-    if (*ch == L'\n') {
-      Shape* shape = find_shape(L'W');
-      Rectangle shape_bb = get_bounding_box(shape);
-      y_offset += shape_bb.upper_right.y - shape_bb.lower_left.y + 4;
-      x_offset = 0;
-      continue;
-    }
-    Shape* shape = find_shape(*ch);
-    apply_xform(shape, &scale_xform);
-    Rectangle shape_bb = get_bounding_box(shape);
-    Matrix3 translate_xform = {0};
-    mk_translate_matrix(&translate_xform, x_offset, y_offset);
-    apply_xform(shape, &translate_xform);
-    x_offset += shape_bb.upper_right.x - shape_bb.lower_left.x + 2;
-
-    float clipping_boundary[ClipEdge_COUNT] = {0};
-    clipping_boundary[ClipEdge_Left] = 0.0;
-    clipping_boundary[ClipEdge_Right] = image_width-1;
-    clipping_boundary[ClipEdge_Top] = image_height-1;
-    clipping_boundary[ClipEdge_Bottom] = 0.0;
-    assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
-    assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
-
-#if 1
-    Shape clipped_shape = clip_shape(shape, clipping_boundary);
-    shape = &clipped_shape;
-#endif
-
-    if (shape->total_point_count > 0) {
-      Polygon polygon = new_empty_polygon();
-      make_polygon(&polygon, shape, surface->supersample_factor);
-      fill_polygon(&polygon, surface);
-
-      float subpixel_weight[3][3] = {
-        {0.f, 1.f/8.f, 0.f},
-        {1.f/8.f, 1.f/2.f, 1.f/8.f},
-        {0.f, 1.f/8.f, 0.f}
-      };
-      uint8_t** supersample_line = alloca(surface->supersample_factor*sizeof(uint8_t*));
-      uint8_t** supersample_box = alloca(surface->supersample_factor*sizeof(uint8_t*));
-      for (int i = 0; i < image_height; ++i) {
-        supersample_line[0] = surface->image_buffer + (surface->supersample_factor*i)*surface->image_width;
-        supersample_line[1] = surface->image_buffer + (surface->supersample_factor*i+1)*surface->image_width;
-        supersample_line[2] = surface->image_buffer + (surface->supersample_factor*i+1)*surface->image_width;
-        for (int j = 0; j < image_width; ++j) {
-          supersample_box[0] = supersample_line[0] + j*surface->supersample_factor;
-          supersample_box[1] = supersample_line[1] + j*surface->supersample_factor;
-          supersample_box[2] = supersample_line[2] + j*surface->supersample_factor;
-
-          float pixel_value = 0;
-
-          uint8_t subpixel_value = supersample_box[0][0];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[0][0];
-
-          subpixel_value = supersample_box[0][1];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[0][1];
-
-          subpixel_value = supersample_box[0][2];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[0][2];
-
-          subpixel_value = supersample_box[1][0];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[1][0];
-
-          subpixel_value = supersample_box[1][1];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[1][1];
-
-          subpixel_value = supersample_box[1][2];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[1][2];
-
-          subpixel_value = supersample_box[2][0];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[2][0];
-
-          subpixel_value = supersample_box[2][1];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[2][1];
-
-          subpixel_value = supersample_box[2][2];
-          assert (subpixel_value == 0 || subpixel_value == 1);
-          pixel_value += subpixel_value*subpixel_weight[2][2];
-
-          int pixel_intensity = 255.f - 200.f*pixel_value;
-          assert (pixel_intensity >= 0 && pixel_intensity <= 255);
-          draw_pixel_gray(j, i, pixel_intensity);
-        }
-      }
-    }
-  }
-}
-#endif
-
 void
 draw_figure(DeviceWindow* device_window) {
   DrawingSurface drawing_surface = {0};
@@ -1054,11 +901,8 @@ draw_figure(DeviceWindow* device_window) {
   drawing_surface.height = drawing_surface.y_max - drawing_surface.y_min;
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
-  //drawing_surface.pixel_buffer = push_array(uint8_t, drawing_surface.x_pixel_count*drawing_surface.y_pixel_count);
 
-  //clear_drawing_surface(&drawing_surface);
-
-  Shape* shape = find_shape(L'.');
+  Shape* shape = find_shape(L'0');
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.2f, %0.2f), (%0.2f, %0.2f)\n",
         shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
@@ -1092,11 +936,11 @@ draw_figure(DeviceWindow* device_window) {
   mk_scale_matrix(&scale_window, 1.f/view_window.width, 1.f/view_window.height);
   apply_xform(shape, &scale_window);
 
-  fill_device_window(device_window, 255);
+  clear_device_window(device_window, 255);
   if (shape->total_point_count > 0) {
     Polygon polygon = {0};
     make_polygon(&polygon, shape);
-    fill_polygon(&polygon, &drawing_surface, device_window);
+    draw_polygon(&polygon, &drawing_surface, device_window);
   }
 }
 
