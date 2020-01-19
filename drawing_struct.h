@@ -1,3 +1,5 @@
+// -*- coding: utf-8 -*-
+
 typedef struct {
   uint32_t R;
   uint32_t G;
@@ -116,8 +118,6 @@ typedef enum {
 } ClippingEdge;
 
 typedef struct {
-  //int supersample_factor;
-  uint8_t* pixel_buffer;
   int x_pixel_count;
   int y_pixel_count;
   float pixel_width;
@@ -130,4 +130,20 @@ typedef struct {
   float height;
 } DrawingSurface;
 
+typedef struct {
+  Point lower_left;
+  Point upper_right;
+  Point center;
+  float width;
+  float height;
+} ViewWindow;
+
+typedef struct {
+  uint32_t* pixel_buffer;
+  int width;
+  int height;
+  int bytes_per_pixel;
+  int bits_per_pixel;
+  int depth;
+} DeviceWindow;
 

@@ -1,76 +1,10 @@
 // -*- coding: utf-8 -*-
-#include <string.h>
-#include <xcb/xcb.h>
-#include <xcb/xcb_image.h>
-#include <xcb/xcb_atom.h>
-#include <xcb/xcb_icccm.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <limits.h>
-#include <float.h>
-#include <math.h>
-#include <wchar.h>
-
-#define local static
-#define global static
-#define internal static
-#define true 1u
-#define false 0u
-#define bool uint32_t
-#define KILOBYTE 1024
-#define MEGABYTE 1024*KILOBYTE
-#define PI 3.141592f
-
-#include "drawing_struct.h"
-
-#define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
-
-#define assert(EXPR) do { if(!(EXPR)) assert_(#EXPR, __FILE__, __LINE__); } while(0)
-void assert_(char* message, char* file, int line)
-{
-  printf("%s:%d: ", file, line);
-  if(!message || message[0] == '\0')
-  {
-    message = "";
-  }
-  printf("assert(%s)\n", message);
-  *(int*)0 = 0;
-}
 
 #define abs(i) \
   ((i) > 0 ? (i) : -(i))
 
 #define fabs(f) \
   ((f) > 0.f ? (f) : -(f))
-
-uint8_t*
-push_object(Arena* arena, size_t block_size) {
-  void* object = arena->avail;
-  arena->avail += block_size + 1*KILOBYTE;
-  return object;
-}
-
-#define push_struct(type) \
-  (type*) push_object(&arena, sizeof(type))
-
-#define push_array(type, count) \
-  (type*) push_object(&arena, sizeof(type)*(count))
-
-global Arena arena;
-global xcb_image_t* image;
-
-global Color COLOR_RED = {.R=255, .G=0, .B=0};
-global Color COLOR_GREEN = {.R=255, .G=0, .B=0};
-global Color COLOR_BLUE = {.R=0, .G=0, .B=255};
-global Color WHITE = {.R=255, .G=255, .B=255};
-global Color BLACK = {.R=0, .G=0, .B=0};
-
-global uint32_t* image_buffer = 0;
-global int image_width = 400;
-global int image_height = 400;
-
-global DrawingSurface drawing_surface = {0};
 
 iPoint
 convert_point_ftoi(Point* f_pt) {
@@ -281,24 +215,24 @@ make_grayscale_rgb32(uint8_t intensity) {
 }
 
 void
-draw_pixel_black(int x, int y) {
-  uint32_t* p = image_buffer + image_width*y + x;
+draw_pixel_black(DeviceWindow* device_window, int x, int y) {
+  uint32_t* p = device_window->pixel_buffer + device_window->width*y + x;
   *p = make_grayscale_rgb32(0);
 }
 
 void
-draw_pixel_gray(int x, int y, uint8_t intensity) {
-  uint32_t* p = image_buffer + image_width*y + x;
+draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t intensity) {
+  uint32_t* p = device_window->pixel_buffer + device_window->width*y + x;
   *p = make_grayscale_rgb32(intensity);
 }
 
-void
-clear_drawing_surface(DrawingSurface* surface) {
-  int surface_buffer_length = surface->x_pixel_count*surface->y_pixel_count;
-  for (int i = 0; i < surface_buffer_length; ++i) {
-    surface->pixel_buffer[i] = 0;
-  }
-}
+//void
+//clear_drawing_surface(DrawingSurface* surface) {
+//  int surface_buffer_length = surface->x_pixel_count*surface->y_pixel_count;
+//  for (int i = 0; i < surface_buffer_length; ++i) {
+//    surface->pixel_buffer[i] = 0;
+//  }
+//}
 
 int
 truncate_float(float f) {
@@ -306,13 +240,13 @@ truncate_float(float f) {
 }
 
 void
-set_pixel_on_drawing_surface(DrawingSurface* drawing_surface, float x, float y) {
-  int pixel_y = floor((y - drawing_surface->y_min)/drawing_surface->pixel_height);
+set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device_window, float x, float y) {
+  int pixel_y = round((y - drawing_surface->y_min)/drawing_surface->pixel_height);
   assert(pixel_y >= 0 && pixel_y < drawing_surface->y_pixel_count);
-  int pixel_x = floor((x - drawing_surface->x_min)/drawing_surface->pixel_width);
+  int pixel_x = round((x - drawing_surface->x_min)/drawing_surface->pixel_width);
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
-  draw_pixel_black(pixel_x, pixel_y);
+  draw_pixel_black(device_window, pixel_x, pixel_y);
 //  uint8_t* p = drawing_surface->pixel_buffer + drawing_surface->x_pixel_count*pixel_y + pixel_x;
 //  *p = 1;
 }
@@ -552,7 +486,7 @@ y_intercept_at_scanline(DrawingSurface* drawing_surface, int scanline_nr) {
 }
 
 void
-fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface) {
+fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* device_window) {
   EdgeList* edge_list = polygon->edge_list;
   for (int i = 0; i < polygon->n_contours; ++i) {
     for (int j = 0; j < edge_list[i].count; ++j) {
@@ -630,11 +564,11 @@ fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface) {
       printf("left_edge=(%.2f,%.2f)\n", left_edge->x_intercept, y);
       printf("right_edge=(%.2f,%.2f)\n", right_edge->x_intercept, y);
 
-      set_pixel_on_drawing_surface(drawing_surface, left_edge->x_intercept, y);
+      set_pixel_on_device_window(drawing_surface, device_window, left_edge->x_intercept, y);
       for (float x = left_edge->x_intercept;
            x < right_edge->x_intercept;
            x += drawing_surface->pixel_width) {
-        set_pixel_on_drawing_surface(drawing_surface, x, y);
+        set_pixel_on_device_window(drawing_surface, device_window, x, y);
       }
     }
     for (int i = 0; i < active_edge_list.count;) {
@@ -656,49 +590,18 @@ fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface) {
 }
 
 
-static xcb_format_t*
-find_format(xcb_connection_t* conn, uint8_t depth, uint8_t bpp) {
-  const xcb_setup_t* setup = xcb_get_setup(conn);
-  xcb_format_t* fmt = xcb_setup_pixmap_formats(setup);
-  xcb_format_t* fmtend = fmt + xcb_setup_pixmap_formats_length(setup);
-  for(; fmt != fmtend; ++fmt) {
-    if((fmt->depth == depth) && (fmt->bits_per_pixel == bpp)) {
-      //printf("fmt %p has pad %d depth %d, bpp %d\n", fmt, fmt->scanline_pad, depth, bpp);
-      return fmt;
-    }
-  }
-  return 0;
-}
-
 void
-fill_image(uint8_t intensity) {
+fill_device_window(DeviceWindow* device_window, uint8_t intensity) {
   int i, j;
-  uint32_t* p = image_buffer;
-  for (int j = 0; j < image_height; ++j) {
-    for (int i = 0; i < image_width; ++i) {
+  uint32_t* p = device_window->pixel_buffer;
+  for (int j = 0; j < device_window->height; ++j) {
+    for (int i = 0; i < device_window->width; ++i) {
       *p++ = make_grayscale_rgb32(intensity);
     }
   }
 }
 
-xcb_image_t*
-create_image(xcb_connection_t* conn) {
-  const xcb_setup_t* setup = xcb_get_setup(conn);
-  uint8_t* image_data = push_array(uint8_t, image_width*image_height*4);
-  xcb_format_t* fmt = find_format(conn, 24, 32);
-  if (fmt == NULL)
-    return NULL;
-
-  return xcb_image_create(image_width, image_height,
-                          XCB_IMAGE_FORMAT_Z_PIXMAP,
-                          fmt->scanline_pad,
-                          fmt->depth,
-                          fmt->bits_per_pixel,
-                          0, setup->image_byte_order,
-                          XCB_IMAGE_ORDER_LSB_FIRST,
-                          image_data, image_width*image_height*4, image_data);
-}
-
+#if 0
 void
 line(int x0, int y0, int x1, int y1) {
   int abs_dx = abs(x1 - x0);
@@ -835,6 +738,7 @@ ellipse(int center_x, int center_y, int radius_x, int radius_y) {
     }
   }
 }
+#endif
 
 Rectangle
 get_bounding_box(Shape* shape) {
@@ -1023,29 +927,6 @@ print_shape_points(Shape* shape) {
   printf("\n");
 }
 
-void
-vflip_image_buffer() {
-#if 0
-  for (int i = 0; i < image_height; ++i) {
-    uint32_t* src_line = image_buffer + image_width*i;
-    uint32_t* dest_line = (uint32_t*)image->data + image_width*i;
-    for (int j = 0; j < image_width; ++j) {
-      uint32_t p = src_line[j];
-      dest_line[j] = p;
-    }
-  }
-#else
-  for (int i = 0; i < image_height; ++i) {
-    uint32_t* src_line = image_buffer + image_width*i;
-    uint32_t* dest_line = (uint32_t*)image->data + image_width*(image_height-1) - image_width*i;
-    for (int j = 0; j < image_width; ++j) {
-      uint32_t p = src_line[j];
-      dest_line[j] = p;
-    }
-  }
-#endif
-}
-
 #if 0
 void
 draw_string(wchar_t* string, DrawingSurface* surface) {
@@ -1161,82 +1042,10 @@ draw_string(wchar_t* string, DrawingSurface* surface) {
 #endif
 
 void
-draw_figure(DrawingSurface* surface) {
-  Shape* shape = find_shape(L'B');
-  Rectangle shape_bb = get_bounding_box(shape);
-  printf("Bounding box: (%0.2f, %0.2f), (%0.2f, %0.2f)\n",
-        shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
-
-  Rectangle window = {0};
-  window.lower_left = shape_bb.lower_left;
-  window.upper_right.x = window.lower_left.x + 800.f;
-  window.upper_right.y = window.lower_left.y + 800.f;
-
-  float window_width = window.upper_right.x - window.lower_left.x;
-  float window_height = window.upper_right.y - window.lower_left.y;
-  Point window_center_point = {0};
-  window_center_point.x = window.lower_left.x + window_width/2.f;
-  window_center_point.y = window.lower_left.y + window_height/2.f;
-
-  float clipping_boundary[ClipEdge_COUNT] = {0};
-  clipping_boundary[ClipEdge_Left] = window.lower_left.x;
-  clipping_boundary[ClipEdge_Right] = window.upper_right.x;
-  clipping_boundary[ClipEdge_Top] = window.upper_right.y;
-  clipping_boundary[ClipEdge_Bottom] = window.lower_left.y;
-  assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
-  assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
-
-  Shape clipped_shape = clip_shape(shape, clipping_boundary);
-  shape = &clipped_shape;
-
-  Matrix3 translate_window = {0};
-  mk_translate_matrix(&translate_window, -window_center_point.x, -window_center_point.y);
-  apply_xform(shape, &translate_window);
-
-  Matrix3 scale_window = {0};
-  mk_scale_matrix(&scale_window, 1.f/window_width, 1.f/window_height);
-  apply_xform(shape, &scale_window);
-
-  if (shape->total_point_count > 0) {
-    Polygon polygon = {0};
-    make_polygon(&polygon, shape);
-    fill_polygon(&polygon, &drawing_surface);
-  }
-}
-
-#if 1
-int
-main(int argc, char** argv) {
-  uint32_t values[2];
-
-  arena.memory = malloc(50*MEGABYTE);
-  if (!arena.memory) {
-    printf("ERROR\n");
-    exit(1);
-  }
-  arena.avail = arena.memory;
-
-  xcb_connection_t* conn = xcb_connect(NULL, NULL);
-  if (!conn) {
-    printf("ERROR\n");
-    exit(1);
-  }
-
-  const xcb_setup_t* setup = xcb_get_setup(conn);
-  xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
-  //printf("root depth %d\n",screen->root_depth);
-
-  image = create_image(conn);
-  if (image == NULL) {
-    printf("ERROR\n");
-    xcb_disconnect(conn);
-    return 1;
-  }
-  image_buffer = push_array(uint32_t, image_width*image_height);
-
-  //drawing_surface.supersample_factor = 1;
-  drawing_surface.x_pixel_count = image_width;
-  drawing_surface.y_pixel_count = image_height;
+draw_figure(DeviceWindow* device_window) {
+  DrawingSurface drawing_surface = {0};
+  drawing_surface.x_pixel_count = device_window->width;
+  drawing_surface.y_pixel_count = device_window->height;
   drawing_surface.x_min = -1.f;
   drawing_surface.x_max = 1.f;
   drawing_surface.y_min = -1.f;
@@ -1245,79 +1054,49 @@ main(int argc, char** argv) {
   drawing_surface.height = drawing_surface.y_max - drawing_surface.y_min;
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
-  drawing_surface.pixel_buffer = push_array(uint8_t, drawing_surface.x_pixel_count*drawing_surface.y_pixel_count);
+  //drawing_surface.pixel_buffer = push_array(uint8_t, drawing_surface.x_pixel_count*drawing_surface.y_pixel_count);
 
-  uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
-  values[0] = screen->white_pixel;
-  values[1] = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_PRESS;
+  //clear_drawing_surface(&drawing_surface);
 
-  xcb_window_t window = xcb_generate_id(conn);
-  xcb_create_window(conn, 24/*XCB_COPY_FROM_PARENT*/, window, screen->root,
-                    10, 10, image->width, image->height, 1,
-                    XCB_WINDOW_CLASS_INPUT_OUTPUT,
-                    screen->root_visual,
-                    mask, values);
+  Shape* shape = find_shape(L'.');
+  Rectangle shape_bb = get_bounding_box(shape);
+  printf("Bounding box: (%0.2f, %0.2f), (%0.2f, %0.2f)\n",
+        shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
 
-  char* title = "Drawing";
-  xcb_icccm_set_wm_name(conn, window, XCB_ATOM_STRING, 8, strlen(title), title);
+  ViewWindow view_window = {0};
+  view_window.lower_left = shape_bb.lower_left;
+  view_window.upper_right.x = view_window.lower_left.x + 100.f;
+  view_window.upper_right.y = view_window.lower_left.y + 100.f;
 
-  xcb_pixmap_t pixmap = xcb_generate_id(conn);
-  xcb_create_pixmap(conn, 24, pixmap, window, image->width, image->height);
+  view_window.width = view_window.upper_right.x - view_window.lower_left.x;
+  view_window.height = view_window.upper_right.y - view_window.lower_left.y;
+  view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
+  view_window.center.y = view_window.lower_left.y + view_window.height/2.f;
 
-  /* Create pixmap plot gc */
-  mask = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND;
-  values[0] = screen->black_pixel;
-  values[1] = 0x00ffffff;
+  float clipping_boundary[ClipEdge_COUNT] = {0};
+  clipping_boundary[ClipEdge_Left] = view_window.lower_left.x;
+  clipping_boundary[ClipEdge_Right] = view_window.upper_right.x;
+  clipping_boundary[ClipEdge_Top] = view_window.upper_right.y;
+  clipping_boundary[ClipEdge_Bottom] = view_window.lower_left.y;
+  assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
+  assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
 
-  xcb_gcontext_t gc = xcb_generate_id (conn);
-  xcb_create_gc(conn, gc, pixmap, mask, values);
+  Shape clipped_shape = clip_shape(shape, clipping_boundary);
+  shape = &clipped_shape;
 
-  /* Put the image into the pixmap */
-  xcb_image_put(conn, pixmap, gc, image, 0, 0, 0);
+  Matrix3 translate_window = {0};
+  mk_translate_matrix(&translate_window, -view_window.center.x, -view_window.center.y);
+  apply_xform(shape, &translate_window);
 
-  /* Show the window */
-  xcb_map_window(conn, window);
-  xcb_flush(conn);
+  Matrix3 scale_window = {0};
+  mk_scale_matrix(&scale_window, 1.f/view_window.width, 1.f/view_window.height);
+  apply_xform(shape, &scale_window);
 
-  fill_image(255);
-  clear_drawing_surface(&drawing_surface);
-  draw_figure(&drawing_surface);
-  //draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &drawing_surface);
-  vflip_image_buffer();
-
-  xcb_image_put(conn, pixmap, gc, image, 0, 0, 0);
-  xcb_copy_area(conn, pixmap, window, gc, 0, 0, 0, 0, image->width, image->height);
-  xcb_flush(conn);
-
-  xcb_generic_event_t* e;
-  int done = false;
-  while (!done && (e = xcb_wait_for_event(conn))) {
-    switch (e->response_type) {
-      case XCB_EXPOSE: {
-        xcb_expose_event_t* ee = (xcb_expose_event_t*)e;
-        //printf("expose %d,%d - %d,%d\n", ee->x, ee->y, ee->width, ee->height);
-        xcb_copy_area(conn, pixmap, window, gc,
-                      ee->x, ee->y,
-                      ee->x, ee->y,
-                      ee->width, ee->height);
-        xcb_flush(conn);
-        break;
-      }
-
-      case XCB_KEY_PRESS:
-        done = true;
-        break;
-
-      case XCB_BUTTON_PRESS:
-        break;
-    }
-    free(e);
+  fill_device_window(device_window, 255);
+  if (shape->total_point_count > 0) {
+    Polygon polygon = {0};
+    make_polygon(&polygon, shape);
+    fill_polygon(&polygon, &drawing_surface, device_window);
   }
-
-  xcb_free_pixmap(conn, pixmap);
-  xcb_disconnect (conn);
-
-  return 0;
 }
-#endif
 
