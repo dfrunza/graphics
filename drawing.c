@@ -22,6 +22,8 @@
 #define MEGABYTE 1024*KILOBYTE
 #define PI 3.141592f
 
+#include "drawing_struct.h"
+
 #define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
 
 #define assert(EXPR) do { if(!(EXPR)) assert_(#EXPR, __FILE__, __LINE__); } while(0)
@@ -36,137 +38,11 @@ void assert_(char* message, char* file, int line)
   *(int*)0 = 0;
 }
 
-typedef struct {
-  uint32_t R;
-  uint32_t G;
-  uint32_t B;
-} Color;
-
-typedef struct {
-  float x;
-  float y;
-  float z;
-} Vector3, Point;
-
-typedef struct {
-  int x;
-  int y;
-  int z;
-} iPoint;
-
-typedef struct {
-  Point lower_left;
-  Point upper_right;
-} Rectangle;
-
-typedef struct {
-  wchar_t character;
-  int* contours;
-  int n_contours;
-  Point* points;
-  int total_point_count;
-} Shape;
-
-typedef struct Edge {
-  float x_intercept;
-  float x_accumulator;
-  union {
-    struct {
-      float x0;
-      float y0;
-      float z0;
-    };
-    Point start_point;
-  };
-  union {
-    struct {
-      float x1;
-      float y1;
-      float z1;
-    };
-    Point end_point;
-  };
-  union {
-    struct {
-      float delta_x;
-      float delta_y;
-    };
-    struct {
-      struct Edge* prev_edge;
-      struct Edge* next_edge;
-    };
-  };
-} Edge;
-
-typedef struct {
-  Edge* entries;
-  int count;
-} EdgeList;
-
-typedef struct {
-  Point** contours;
-  int* contour_vertex_count;
-  int total_vertex_count;
-  int n_contours;
-  EdgeList* edge_list;
-} Polygon;
-
-typedef struct {
-  uint8_t* memory;
-  uint8_t* avail;
-} Arena;
-
-typedef struct {
-  union {
-    struct {
-      float x1;
-      float y1;
-      float z1;
-    };
-    Vector3 col1;
-  };
-  union {
-    struct {
-      float x2;
-      float y2;
-      float z2;
-    };
-    Vector3 col2;
-  };
-  union {
-    struct {
-      float x3;
-      float y3;
-      float z3;
-    };
-    Vector3 col3;
-  };
-} Matrix3;
-
-typedef enum {
-  ClipEdge_Left,
-  ClipEdge_Right,
-  ClipEdge_Bottom,
-  ClipEdge_Top,
-
-  ClipEdge_COUNT,
-} ClippingEdge;
-
-typedef struct {
-  //int supersample_factor;
-  uint8_t* pixel_buffer;
-  int x_pixel_count;
-  int y_pixel_count;
-  float x_min;
-  float x_max;
-  float y_min;
-  float y_max;
-  float width;
-  float height;
-} DrawingSurface;
-
 #define abs(i) \
   ((i) > 0 ? (i) : -(i))
+
+#define fabs(f) \
+  ((f) > 0.f ? (f) : -(f))
 
 uint8_t*
 push_object(Arena* arena, size_t block_size) {
@@ -191,8 +67,8 @@ global Color WHITE = {.R=255, .G=255, .B=255};
 global Color BLACK = {.R=0, .G=0, .B=0};
 
 global uint32_t* image_buffer = 0;
-global int image_width = 1000;
-global int image_height = 200;
+global int image_width = 400;
+global int image_height = 400;
 
 global DrawingSurface drawing_surface = {0};
 
@@ -430,9 +306,15 @@ truncate_float(float f) {
 }
 
 void
-set_pixel_drawing_surface(DrawingSurface* surface, float x, float y) {
-  uint8_t* p = surface->pixel_buffer + surface->x_pixel_count*truncate_float(y) + truncate_float(x);
-  *p = 1;
+set_pixel_on_drawing_surface(DrawingSurface* drawing_surface, float x, float y) {
+  int pixel_y = floor((y - drawing_surface->y_min)/drawing_surface->pixel_height);
+  assert(pixel_y >= 0 && pixel_y < drawing_surface->y_pixel_count);
+  int pixel_x = floor((x - drawing_surface->x_min)/drawing_surface->pixel_width);
+  assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
+
+  draw_pixel_black(pixel_x, pixel_y);
+//  uint8_t* p = drawing_surface->pixel_buffer + drawing_surface->x_pixel_count*pixel_y + pixel_x;
+//  *p = 1;
 }
 
 //TODO: Buggy; draw_pixel_red(2, 2) draws two pixels instead of one.
@@ -575,6 +457,15 @@ new_empty_polygon() {
 }
 
 void
+print_edge_list(EdgeList* edge_list) {
+  for (int i = 0; i < edge_list->count; ++i) {
+    Edge* edge = &edge_list->entries[i];
+    printf("((x0=%.2f, y0=%.2f), (x1=%.2f,y1=%.2f), x_intercept=%.2f)\n",
+           edge->x0, edge->y0, edge->x1, edge->y1, edge->x_intercept);
+  }
+}
+
+void
 make_polygon(Polygon* polygon, Shape* shape) {
   polygon->contour_vertex_count = push_array(int, shape->n_contours);
   polygon->n_contours = shape->n_contours;
@@ -617,7 +508,7 @@ make_polygon(Polygon* polygon, Shape* shape) {
       Edge* edge = &edge_list[i].entries[edge_list[i].count];
       edge->start_point = polygon->contours[i][j];
       edge->end_point = polygon->contours[i][j+1];
-      if (edge->y1 == edge->y0) {
+      if (fabs(edge->y1 - edge->y0) < FLT_MIN) {
         continue;
       }
       edge->prev_edge = prev_edge;
@@ -630,35 +521,34 @@ make_polygon(Polygon* polygon, Shape* shape) {
     edge_list[i].entries[0].prev_edge = &edge_list[i].entries[edge_list[i].count-1];
     edge_list[i].entries[edge_list[i].count-1].next_edge = &edge_list[i].entries[0];
 
-    //printf("Contour #%d\n", i);
-    //print_edge_list(&edge_list[i]);
+    printf("Contour #%d\n", i);
+    print_edge_list(&edge_list[i]);
   }
   polygon->edge_list = edge_list;
 }
 
 void
-update_x_intercept(Edge* edge) {
-  edge->x_accumulator += edge->delta_x;
-  int x_increment = edge->x_accumulator / edge->delta_y;
-  if (abs(edge->x_accumulator) >= abs(edge->delta_y)) {
-    edge->x_intercept += x_increment;
-    edge->x_accumulator -= x_increment * edge->delta_y;
+update_x_intercept(Edge* edge, float y) {
+  if (edge->m != INFINITY) {
+    edge->x_intercept = (y - edge->b)/edge->m;
   }
-}
-
-void
-print_edge_list(EdgeList* edge_list) {
-  for (int i = 0; i < edge_list->count; ++i) {
-    Edge* edge = &edge_list->entries[i];
-    printf("((x0=%.1f, y0=%.1f), (x1=%.1f,y1=%.1f), x_intercept=%.1f)\n",
-           edge->x0, edge->y0, edge->x1, edge->y1, edge->x_intercept);
-  }
+//  edge->x_accumulator += edge->delta_x;
+//  float x_increment = edge->x_accumulator / edge->delta_y;
+//  if (fabs(edge->x_accumulator) >= fabs(edge->delta_y)) {
+//    edge->x_intercept += x_increment;
+//    edge->x_accumulator -= x_increment * edge->delta_y;
+//  }
 }
 
 Matrix3
 new_empty_matrix3() {
   Matrix3 result = {0};
   return result;
+}
+
+float
+y_intercept_at_scanline(DrawingSurface* drawing_surface, int scanline_nr) {
+  return drawing_surface->y_min + (drawing_surface->pixel_height * scanline_nr);
 }
 
 void
@@ -672,30 +562,30 @@ fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface) {
       if (edge->y1 > edge->y0) {
         edge->x_intercept = edge->x0;
         if (next_edge->y1 > edge->y1) {
-          //edge->y1 -= 1.f;
+          edge->y1 -= drawing_surface->pixel_height;
         }
       }
       else if (edge->y1 < edge->y0) {
         edge->x_intercept = edge->x1;
         if (prev_edge->y0 > edge->y0) {
-          //prev_edge->y1 += 1.f;
+          prev_edge->y1 += drawing_surface->pixel_height;
         }
       }
       else assert(false);
     }
-    //printf("Contour #%d\n", i);
-    //print_edge_list(&edge_list[i]);
+    printf("Contour #%d\n", i);
+    print_edge_list(&edge_list[i]);
   }
 
   EdgeList edge_heap = {0};
   edge_heap.entries = push_array(Edge, polygon->total_vertex_count);
   edge_heap.count = 0;
   edge_heap.entries[0] = new_empty_edge();
-  edge_heap.entries[0].y0 = FLT_MIN;
+  edge_heap.entries[0].y0 = drawing_surface->y_min;
   for (int i = 0; i < polygon->n_contours; ++i) {
     for (int j = 0; j < edge_list[i].count; ++j) {
       Edge* edge = &edge_list[i].entries[j];
-      assert (edge->y1 != edge->y0);
+      assert (fabs(edge->y1 - edge->y0) > FLT_MIN);
       if (edge->y1 < edge->y0) {
         Point p = edge->start_point;
         edge->start_point = edge->end_point;
@@ -703,8 +593,10 @@ fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface) {
       }
       edge->delta_x = edge->x1 - edge->x0;
       edge->delta_y = edge->y1 - edge->y0;
-      assert(edge->delta_y != 0);
+      assert(fabs(edge->delta_y) > FLT_MIN);
       edge->x_intercept = edge->x0;
+      edge->m = edge->delta_y / edge->delta_x;  // y = m*x + b
+      edge->b = edge->y0 - edge->m*edge->x0;
       add_polygon_edge(&edge_heap, edge);
     }
   }
@@ -714,36 +606,35 @@ fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface) {
   active_edge_list.entries += 1;
   active_edge_list.count = 0;
   active_edge_list.entries[-1] = new_empty_edge();
-  active_edge_list.entries[-1].x_intercept = FLT_MIN;
+  active_edge_list.entries[-1].x_intercept = drawing_surface->x_min;
   active_edge_list.entries[0] = new_empty_edge();
-  active_edge_list.entries[0].x_intercept = 1.f;
+  active_edge_list.entries[0].x_intercept = drawing_surface->x_max;
 
   assert(edge_heap.count >= 2);
-  float y = drawing_surface->y_min;
-  float x_step = drawing_surface->width / drawing_surface->x_pixel_count;
-  float y_step = drawing_surface->height / drawing_surface->y_pixel_count;
+  int scanline_nr = 0;
   do {
-    //printf("--------------- %d -----------------\n", y);
+    float y = y_intercept_at_scanline(drawing_surface, scanline_nr);
+    printf("--------------- %d -----------------\n", scanline_nr);
     for (int i = 0; i < active_edge_list.count; ++i) {
       Edge* edge = &active_edge_list.entries[i];
-      update_x_intercept(edge);
+      update_x_intercept(edge, y);
     }
 
     sort_active_edge_list(&active_edge_list);
-    //print_edge_list(&active_edge_list);
+    print_edge_list(&active_edge_list);
 
     assert((active_edge_list.count % 2) == 0);
     for (int i = 0; i < active_edge_list.count; i += 2) {
       Edge* left_edge = &active_edge_list.entries[i];
       Edge* right_edge = &active_edge_list.entries[i+1];
-      //printf("left_edge=(%d,%d)\n", left_edge->x_intercept, y);
-      //printf("right_edge=(%d,%d)\n", right_edge->x_intercept, y);
+      printf("left_edge=(%.2f,%.2f)\n", left_edge->x_intercept, y);
+      printf("right_edge=(%.2f,%.2f)\n", right_edge->x_intercept, y);
 
-      set_pixel_drawing_surface(drawing_surface, left_edge->x_intercept, y);
+      set_pixel_on_drawing_surface(drawing_surface, left_edge->x_intercept, y);
       for (float x = left_edge->x_intercept;
            x < right_edge->x_intercept;
-           x += x_step) {
-        set_pixel_drawing_surface(drawing_surface, x, y);
+           x += drawing_surface->pixel_width) {
+        set_pixel_on_drawing_surface(drawing_surface, x, y);
       }
     }
     for (int i = 0; i < active_edge_list.count;) {
@@ -754,13 +645,14 @@ fill_polygon(Polygon* polygon, DrawingSurface* drawing_surface) {
       }
       ++i;
     }
-    y += y_step;
+    ++scanline_nr;
+    y = y_intercept_at_scanline(drawing_surface, scanline_nr);
     while (edge_heap.count > 0 && edge_heap.entries[1].y0 <= y) {
       Edge edge = pop_polygon_edge(&edge_heap);
-      edge.x_accumulator = 0;
+      //edge.x_accumulator = 0;
       insert_active_edge(&active_edge_list, &edge);
     }
-  } while (y < drawing_surface->y_max);
+  } while (scanline_nr < drawing_surface->y_pixel_count);
 }
 
 
@@ -973,7 +865,7 @@ get_bounding_box(Shape* shape) {
 
 void
 vertical_line_intersection(Point* p0, Point* p1, Point* result, int x) {
-  assert(p1->x != p0->x);
+  assert(fabs(p1->x - p0->x) > FLT_MIN);
   float m = (p1->y - p0->y)/(float)(p1->x - p0->x);
   result->y = p1->y + m*(x - p1->x);
   result->x = x;
@@ -981,7 +873,7 @@ vertical_line_intersection(Point* p0, Point* p1, Point* result, int x) {
 
 void
 horizontal_line_intersection(Point* p0, Point* p1, Point* result, int y) {
-  assert(p1->y != p0->y);
+  assert(fabs(p1->y - p0->y) > FLT_MIN);
   float m = (p1->y - p0->y)/(float)(p1->x - p0->x);
   result->x = p1->x + (y - p1->y)/m;
   result->y = y;
@@ -991,11 +883,11 @@ bool
 does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
     int x = clipping_boundary[clipping_edge];
-    return (p0->x != p1->x) && ((p0->x >= x && p1->x < x) || (p0->x <= x && p1->x >= x));
+    return (fabs(p0->x - p1->x) > FLT_MIN) && ((p0->x >= x && p1->x < x) || (p0->x <= x && p1->x >= x));
   }
   else if (clipping_edge == ClipEdge_Bottom || clipping_edge == ClipEdge_Top) {
     int y = clipping_boundary[clipping_edge];
-    return (p0->y != p1->y) && ((p0->y >= y && p1->y <= y) || (p0->y <= y && p1->y >= y));
+    return (fabs(p0->y - p1->y) > FLT_MIN) && ((p0->y >= y && p1->y <= y) || (p0->y <= y && p1->y >= y));
   }
   else {
     assert(false);
@@ -1051,6 +943,7 @@ do_clip_point(Point* v, ClippingEdge clipping_edge, Point* first_clipped[static 
     if (recently_clipped[clipping_edge]) {
       if (does_intersect_clipping_edge(recently_clipped[clipping_edge], v, clipping_edge, clipping_boundary)) {
         Point* intersection_point = push_struct(Point);
+        intersection_point->z = 1.f;
         get_clip_edge_intersection(recently_clipped[clipping_edge], v, intersection_point, clipping_edge, clipping_boundary);
         if (clipping_edge < ClipEdge_COUNT-1) {
           do_clip_point(intersection_point, clipping_edge+1, first_clipped, recently_clipped, clipping_boundary,
@@ -1102,6 +995,7 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
       }
       if (does_intersect_clipping_edge(recently_clipped[clipping_edge], first_clipped[clipping_edge], clipping_edge, clipping_boundary)) {
         Point* intersection_point = push_struct(Point);
+        intersection_point->z = 1.f;
         get_clip_edge_intersection(recently_clipped[clipping_edge], first_clipped[clipping_edge], intersection_point, clipping_edge, clipping_boundary);
         if (clipping_edge < ClipEdge_COUNT-1) {
           do_clip_point(intersection_point, clipping_edge+1, first_clipped, recently_clipped, clipping_boundary,
@@ -1124,7 +1018,7 @@ void
 print_shape_points(Shape* shape) {
   for (int i = 0; i < shape->total_point_count; ++i) {
     Point* p = &shape->points[i];
-    printf("(%.1f, %.1f) ", p->x, p->y);
+    printf("(%.2f, %.2f) ", p->x, p->y);
   }
   printf("\n");
 }
@@ -1268,15 +1162,15 @@ draw_string(wchar_t* string, DrawingSurface* surface) {
 
 void
 draw_figure(DrawingSurface* surface) {
-  Shape* shape = find_shape(L'T');
+  Shape* shape = find_shape(L'B');
   Rectangle shape_bb = get_bounding_box(shape);
-  printf("Bounding box: (%0.1f, %0.1f), (%0.1f, %0.1f)\n",
+  printf("Bounding box: (%0.2f, %0.2f), (%0.2f, %0.2f)\n",
         shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
 
   Rectangle window = {0};
   window.lower_left = shape_bb.lower_left;
-  window.upper_right.x = window.lower_left.x + 200.f;
-  window.upper_right.y = window.lower_left.y + 200.f;
+  window.upper_right.x = window.lower_left.x + 800.f;
+  window.upper_right.y = window.lower_left.y + 800.f;
 
   float window_width = window.upper_right.x - window.lower_left.x;
   float window_height = window.upper_right.y - window.lower_left.y;
@@ -1308,75 +1202,6 @@ draw_figure(DrawingSurface* surface) {
     make_polygon(&polygon, shape);
     fill_polygon(&polygon, &drawing_surface);
   }
-
-  int x = 0x0;
-#if 0
-  if (shape->total_point_count > 0) {
-    Polygon polygon = new_empty_polygon();
-    make_polygon(&polygon, shape, surface->supersample_factor);
-    fill_polygon(&polygon, surface);
-
-    float subpixel_weight[3][3] = {
-      {1.f/24.f, 1.f/24.f, 1.f/24.f},
-      {1.f/24.f, 2.f/3.f, 1.f/24.f},
-      {1.f/24.f, 1.f/24.f, 1.f/24.f}
-    };
-    uint8_t** supersample_line = alloca(surface->supersample_factor*sizeof(uint8_t*));
-    uint8_t** supersample_box = alloca(surface->supersample_factor*sizeof(uint8_t*));
-    for (int i = 0; i < image_height; ++i) {
-      supersample_line[0] = surface->image_buffer + (surface->supersample_factor*i)*surface->image_width;
-      supersample_line[1] = surface->image_buffer + (surface->supersample_factor*i+1)*surface->image_width;
-      supersample_line[2] = surface->image_buffer + (surface->supersample_factor*i+1)*surface->image_width;
-      for (int j = 0; j < image_width; ++j) {
-        supersample_box[0] = supersample_line[0] + j*surface->supersample_factor;
-        supersample_box[1] = supersample_line[1] + j*surface->supersample_factor;
-        supersample_box[2] = supersample_line[2] + j*surface->supersample_factor;
-
-        float pixel_value = 0;
-
-        uint8_t subpixel_value = supersample_box[0][0];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[0][0];
-
-        subpixel_value = supersample_box[0][1];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[0][1];
-
-        subpixel_value = supersample_box[0][2];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[0][2];
-
-        subpixel_value = supersample_box[1][0];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[1][0];
-
-        subpixel_value = supersample_box[1][1];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[1][1];
-
-        subpixel_value = supersample_box[1][2];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[1][2];
-
-        subpixel_value = supersample_box[2][0];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[2][0];
-
-        subpixel_value = supersample_box[2][1];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[2][1];
-
-        subpixel_value = supersample_box[2][2];
-        assert (subpixel_value == 0 || subpixel_value == 1);
-        pixel_value += subpixel_value*subpixel_weight[2][2];
-
-        int pixel_intensity = 255.f - 255.f*pixel_value;
-        assert (pixel_intensity >= 0 && pixel_intensity <= 255);
-        draw_pixel_gray(j, i, pixel_intensity);
-      }
-    }
-  }
-#endif
 }
 
 #if 1
@@ -1399,7 +1224,7 @@ main(int argc, char** argv) {
 
   const xcb_setup_t* setup = xcb_get_setup(conn);
   xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
-  printf("root depth %d\n",screen->root_depth);
+  //printf("root depth %d\n",screen->root_depth);
 
   image = create_image(conn);
   if (image == NULL) {
@@ -1410,14 +1235,16 @@ main(int argc, char** argv) {
   image_buffer = push_array(uint32_t, image_width*image_height);
 
   //drawing_surface.supersample_factor = 1;
-  drawing_surface.x_pixel_count = 200;
-  drawing_surface.y_pixel_count = 200;
+  drawing_surface.x_pixel_count = image_width;
+  drawing_surface.y_pixel_count = image_height;
   drawing_surface.x_min = -1.f;
   drawing_surface.x_max = 1.f;
   drawing_surface.y_min = -1.f;
   drawing_surface.y_max = 1.f;
   drawing_surface.width = drawing_surface.x_max - drawing_surface.x_min;
   drawing_surface.height = drawing_surface.y_max - drawing_surface.y_min;
+  drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
+  drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
   drawing_surface.pixel_buffer = push_array(uint8_t, drawing_surface.x_pixel_count*drawing_surface.y_pixel_count);
 
   uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
