@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
-#include <float.h>
 #include <math.h>
 #include <wchar.h>
 
@@ -22,6 +21,7 @@
 #define KILOBYTE 1024
 #define MEGABYTE 1024*KILOBYTE
 #define PI 3.141592f
+#define FLOAT_EPSILON 0.000001
 
 #define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
 
@@ -181,7 +181,7 @@ main(int argc, char** argv) {
   xcb_map_window(connection, x11_window);
   xcb_flush(connection);
 
-  draw_figure(&device_window);
+  draw(&device_window);
   //draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &drawing_surface);
   blit_device_window_to_x11_image(&device_window, x11_image);
 

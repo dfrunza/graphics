@@ -228,7 +228,44 @@ draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t intensity) {
 
 int
 truncate_float(float f) {
-  return (int)f;
+  int result = (int)f;
+  return result;
+}
+
+bool
+float_is_zero(float a) {
+  bool result = fabs(a) <= FLOAT_EPSILON;
+  return result;
+}
+
+bool
+float_is_equal(float a, float b) {
+  bool result = fabs(a - b) <= FLOAT_EPSILON;
+  return result;
+}
+
+bool
+float_is_greater(float a, float b) {
+  bool result = (a > b) && !float_is_equal(a, b);
+  return result;
+}
+
+bool
+float_is_greater_or_equal(float a, float b) {
+  bool result = float_is_greater(a, b) || float_is_equal(a, b);
+  return result;
+}
+
+bool
+float_is_less(float a, float b) {
+  bool result = (a < b) && !float_is_equal(a, b);
+  return result;
+}
+
+bool
+float_is_less_or_equal(float a, float b) {
+  bool result = float_is_less(a, b) || float_is_equal(a, b);
+  return result;
 }
 
 void
@@ -294,8 +331,9 @@ add_polygon_edge(EdgeList* heap, Edge* edge) {
 void
 insert_active_edge(EdgeList* list, Edge* edge) {
   int i = 0;
-  while (edge->x_intercept >= list->entries[i].x_intercept) {
+  while (float_is_greater_or_equal(edge->x_intercept, list->entries[i].x_intercept)) {
     ++i;
+    assert (i <= list->count);
   }
   Edge swap_edge = list->entries[i];
   list->entries[i] = *edge;
@@ -368,7 +406,7 @@ print_edge_list(EdgeList* edge_list) {
 }
 
 void
-make_polygon(Polygon* polygon, Shape* shape) {
+make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
   polygon->contour_vertex_count = push_array(int, shape->n_contours);
   polygon->n_contours = shape->n_contours;
   polygon->contours = push_array(Point*, shape->n_contours);
@@ -410,7 +448,11 @@ make_polygon(Polygon* polygon, Shape* shape) {
       Edge* edge = &edge_list[i].entries[edge_list[i].count];
       edge->start_point = polygon->contours[i][j];
       edge->end_point = polygon->contours[i][j+1];
-      if (fabs(edge->y1 - edge->y0) < FLT_MIN) {
+      assert (edge->start_point.x >= drawing_surface->x_min && edge->start_point.x <= drawing_surface->x_max);
+      assert (edge->start_point.y >= drawing_surface->y_min && edge->start_point.y <= drawing_surface->y_max);
+      assert (edge->end_point.x >= drawing_surface->x_min && edge->end_point.x <= drawing_surface->x_max);
+      assert (edge->end_point.y >= drawing_surface->y_min && edge->end_point.y <= drawing_surface->y_max);
+      if (float_is_equal(edge->y1, edge->y0)) {
         continue;
       }
       edge->prev_edge = prev_edge;
@@ -481,7 +523,7 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
   for (int i = 0; i < polygon->n_contours; ++i) {
     for (int j = 0; j < edge_list[i].count; ++j) {
       Edge* edge = &edge_list[i].entries[j];
-      assert (fabs(edge->y1 - edge->y0) > FLT_MIN);
+      assert (!float_is_equal(edge->y1, edge->y0));
       if (edge->y1 < edge->y0) {
         Point p = edge->start_point;
         edge->start_point = edge->end_point;
@@ -489,7 +531,7 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
       }
       edge->delta_x = edge->x1 - edge->x0;
       edge->delta_y = edge->y1 - edge->y0;
-      assert(fabs(edge->delta_y) > FLT_MIN);
+      assert(!float_is_zero(edge->delta_y));
       edge->x_intercept = edge->x0;
       edge->m = edge->delta_y / edge->delta_x;  // y = m*x + b
       edge->b = edge->y0 - edge->m*edge->x0;
@@ -730,7 +772,7 @@ get_bounding_box(Shape* shape) {
 
 void
 vertical_line_intersection(Point* p0, Point* p1, Point* result, int x) {
-  assert(fabs(p1->x - p0->x) > FLT_MIN);
+  assert(!float_is_equal(p1->x, p0->x));
   float m = (p1->y - p0->y)/(float)(p1->x - p0->x);
   result->y = p1->y + m*(x - p1->x);
   result->x = x;
@@ -738,7 +780,7 @@ vertical_line_intersection(Point* p0, Point* p1, Point* result, int x) {
 
 void
 horizontal_line_intersection(Point* p0, Point* p1, Point* result, int y) {
-  assert(fabs(p1->y - p0->y) > FLT_MIN);
+  assert(!float_is_equal(p1->y, p0->y));
   float m = (p1->y - p0->y)/(float)(p1->x - p0->x);
   result->x = p1->x + (y - p1->y)/m;
   result->y = y;
@@ -746,17 +788,23 @@ horizontal_line_intersection(Point* p0, Point* p1, Point* result, int y) {
 
 bool
 does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
+  bool result = false;
   if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
     int x = clipping_boundary[clipping_edge];
-    return (fabs(p0->x - p1->x) > FLT_MIN) && ((p0->x >= x && p1->x < x) || (p0->x <= x && p1->x >= x));
+    result = !float_is_equal(p0->x, p1->x) &&
+      ((float_is_greater(p0->x, x) && float_is_less(p1->x, x)) ||
+       (float_is_less(p0->x, x) && (p1->x > x)));
   }
   else if (clipping_edge == ClipEdge_Bottom || clipping_edge == ClipEdge_Top) {
     int y = clipping_boundary[clipping_edge];
-    return (fabs(p0->y - p1->y) > FLT_MIN) && ((p0->y >= y && p1->y <= y) || (p0->y <= y && p1->y >= y));
+    result = !float_is_equal(p0->y, p1->y) &&
+      ((float_is_greater(p0->y, y) && float_is_less(p1->y, y)) ||
+       (float_is_less(p0->y, y) && float_is_greater(p1->y, y)));
   }
   else {
     assert(false);
   }
+  return result;
 }
 
 void
@@ -772,29 +820,31 @@ get_clip_edge_intersection(Point* r, Point* v, Point* result,
 
 bool
 is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
+  bool result = false;
   if (clipping_edge == ClipEdge_Left) {
-    if (v->x >= clipping_boundary[ClipEdge_Left]) {
-      return true;
+    if (float_is_greater_or_equal(v->x, clipping_boundary[ClipEdge_Left])) {
+      result = true;
     }
   }
   else if (clipping_edge == ClipEdge_Right) {
-    if (v->x <= clipping_boundary[ClipEdge_Right]) {
-      return true;
+    if (float_is_less_or_equal(v->x, clipping_boundary[ClipEdge_Right])) {
+      result = true;
     }
   }
   else if (clipping_edge == ClipEdge_Bottom) {
-    if (v->y >= clipping_boundary[ClipEdge_Bottom]) {
-      return true;
+    if (float_is_greater_or_equal(v->y, clipping_boundary[ClipEdge_Bottom])) {
+      result = true;
     }
   }
   else if (clipping_edge == ClipEdge_Top) {
-    if (v->y <= clipping_boundary[ClipEdge_Top]) {
-      return true;
+    if (float_is_less_or_equal(v->y, clipping_boundary[ClipEdge_Top])) {
+      result = true;
     }
   }
   else {
     assert(false);
   }
+  return result;
 }
 
 void
@@ -889,7 +939,7 @@ print_shape_points(Shape* shape) {
 }
 
 void
-draw_figure(DeviceWindow* device_window) {
+draw(DeviceWindow* device_window) {
   DrawingSurface drawing_surface = {0};
   drawing_surface.x_pixel_count = device_window->width;
   drawing_surface.y_pixel_count = device_window->height;
@@ -902,7 +952,8 @@ draw_figure(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  Shape* shape = find_shape(L'0');
+  Shape* shape = find_shape(L'▲');
+  assert (shape);
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.2f, %0.2f), (%0.2f, %0.2f)\n",
         shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
@@ -920,13 +971,21 @@ draw_figure(DeviceWindow* device_window) {
   float clipping_boundary[ClipEdge_COUNT] = {0};
   clipping_boundary[ClipEdge_Left] = view_window.lower_left.x;
   clipping_boundary[ClipEdge_Right] = view_window.upper_right.x;
-  clipping_boundary[ClipEdge_Top] = view_window.upper_right.y;
   clipping_boundary[ClipEdge_Bottom] = view_window.lower_left.y;
+  clipping_boundary[ClipEdge_Top] = view_window.upper_right.y;
   assert (clipping_boundary[ClipEdge_Left] < clipping_boundary[ClipEdge_Right]);
   assert (clipping_boundary[ClipEdge_Bottom < clipping_boundary[ClipEdge_Top]]);
 
+  printf("Clipping window: (Left=%.2f,Right=%.2f,Bottom=%.2f,Top=%.2f)\n",
+         clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Right],
+         clipping_boundary[ClipEdge_Bottom], clipping_boundary[ClipEdge_Top]);
+
+  printf("---- BEFORE CLIPPING ----\n");
+  print_shape_points(shape);
   Shape clipped_shape = clip_shape(shape, clipping_boundary);
   shape = &clipped_shape;
+  printf("---- AFTER CLIPPING ----\n");
+  print_shape_points(shape);
 
   Matrix3 translate_window = {0};
   mk_translate_matrix(&translate_window, -view_window.center.x, -view_window.center.y);
@@ -939,7 +998,7 @@ draw_figure(DeviceWindow* device_window) {
   clear_device_window(device_window, 255);
   if (shape->total_point_count > 0) {
     Polygon polygon = {0};
-    make_polygon(&polygon, shape);
+    make_polygon(&polygon, shape, &drawing_surface);
     draw_polygon(&polygon, &drawing_surface, device_window);
   }
 }
