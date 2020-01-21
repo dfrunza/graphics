@@ -228,10 +228,11 @@ print_shape_points(Shape* shape) {
 
 void
 print_edge_list(EdgeList* edge_list) {
+  Edge* edge = &edge_list->entries[0];
   for (int i = 0; i < edge_list->count; ++i) {
-    Edge* edge = &edge_list->entries[i];
     printf("((x0=%.4f, y0=%.4f), (x1=%.4f,y1=%.4f), x_intercept=%.4f)\n",
            edge->x0, edge->y0, edge->x1, edge->y1, edge->x_intercept);
+    edge = edge->next_edge;
   }
   printf("\n");
 }
@@ -466,25 +467,6 @@ make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
       assert (edge->start_point.y >= drawing_surface->y_min && edge->start_point.y <= drawing_surface->y_max);
       assert (edge->end_point.x >= drawing_surface->x_min && edge->end_point.x <= drawing_surface->x_max);
       assert (edge->end_point.y >= drawing_surface->y_min && edge->end_point.y <= drawing_surface->y_max);
-      //if (fabs(edge->y1 - edge->y0) < drawing_surface->pixel_height) {
-      //  float min_y = edge->y0;
-      //  if (edge->y1 < min_y) {
-      //    min_y = edge->y1;
-      //  }
-      //  float lower_scanline = floor(drawing_surface_to_device_window_y_value(drawing_surface, min_y));
-      //  if (drawing_surface_to_device_window_y_value(drawing_surface, edge->y0) >= lower_scanline &&
-      //      drawing_surface_to_device_window_y_value(drawing_surface, edge->y1) >= lower_scanline) {
-      //    accumulated_y_distance += fabs(edge->y1 - edge->y0);
-      //    if (accumulated_y_distance >= drawing_surface->pixel_height) {
-      //      edge->start_point = prev_edge->end_point;
-      //      accumulated_y_distance = 0.f;
-      //    }
-      //    else {
-      //      edge->y0 = edge->y1 = min_y;
-      //      continue;
-      //    }
-      //  }
-      //}
       if (float_is_equal(edge->y1, edge->y0)) {
         continue;
       }
@@ -497,9 +479,6 @@ make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
     }
     edge_list[i].entries[0].prev_edge = &edge_list[i].entries[edge_list[i].count-1];
     edge_list[i].entries[edge_list[i].count-1].next_edge = &edge_list[i].entries[0];
-
-    printf("Contour #%d\n", i);
-    print_edge_list(&edge_list[i]);
   }
 
   for (int i = 0; i < polygon->n_contours; ++i) {
@@ -523,10 +502,19 @@ make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
         //}
       }
       else assert(false);
+
+      if (fabs(edge->y1 - edge->y0) < drawing_surface->pixel_height) {
+        prev_edge->y1 = next_edge->y0;
+
+        prev_edge->next_edge = next_edge;
+        next_edge->prev_edge = prev_edge;
+        edge->next_edge = edge->prev_edge = 0;
+        --edge_count;
+      }
     }
     edge_list[i].count = edge_count;
-//    printf("Contour #%d\n", i);
-//    print_edge_list(&edge_list[i]);
+    printf("Contour #%d\n", i);
+    print_edge_list(&edge_list[i]);
   }
 
   polygon->edge_list = edge_list;
@@ -560,9 +548,9 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
   edge_heap.entries[0].y0 = drawing_surface->y_min;
   for (int i = 0; i < polygon->n_contours; ++i) {
     EdgeList* edge_list = &polygon->edge_list[i];
+    Edge* edge = &edge_list->entries[0];
     for (int j = 0; j < edge_list->count; ++j) {
-      Edge* edge = &edge_list->entries[j];
-      assert (!float_is_equal(edge->y1, edge->y0));
+      //assert (fabs(edge->y1 - edge->y0) >= drawing_surface->pixel_height);
       if (edge->y1 < edge->y0) {
         Point p = edge->start_point;
         edge->start_point = edge->end_point;
@@ -575,6 +563,7 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
       edge->m = edge->delta_y / edge->delta_x;  // y = m*x + b
       edge->b = edge->y0 - edge->m*edge->x0;
       add_polygon_edge(&edge_heap, edge);
+      edge = edge->next_edge;
     }
   }
 
@@ -990,7 +979,7 @@ draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  Shape* shape = find_shape(L'A');
+  Shape* shape = find_shape(L'X');
   assert (shape);
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
@@ -998,8 +987,8 @@ draw(DeviceWindow* device_window) {
 
   ViewWindow view_window = {0};
   view_window.lower_left = shape_bb.lower_left;
-  view_window.width = 1000.f;
-  view_window.height = 1000.f;
+  view_window.width = 2400.f;
+  view_window.height = 2400.f;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
   view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
