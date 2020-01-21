@@ -65,7 +65,6 @@ global Color BLACK = {.R=0, .G=0, .B=0};
 xcb_image_t*
 create_x11_image(xcb_connection_t* conn, DeviceWindow* device_window) {
   const xcb_setup_t* setup = xcb_get_setup(conn);
-  //xcb_format_t* fmt = find_x11_format(conn, 24, device_window->bytes_per_pixel);
   xcb_format_t* fmt_at = xcb_setup_pixmap_formats(setup);
   xcb_format_t* fmt_end = fmt_at + xcb_setup_pixmap_formats_length(setup);
   xcb_format_t* fmt = 0;

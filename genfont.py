@@ -8,9 +8,9 @@ from freetype import Face, \
 # sudo -H pip3 install shapely freetype-py fonttools numpy
 
 FONT_NAME = "DejaVuSansMono"
-FONT_SIZE = 16
+FONT_SIZE = 32
 CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
-CHAR_LIST += "~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./"
+CHAR_LIST += "~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./"
 CHAR_LIST += "▲♠♣★"
 
 def escape_character(character):

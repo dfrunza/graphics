@@ -13,12 +13,6 @@ typedef struct {
 } Vector3, Point;
 
 typedef struct {
-  int x;
-  int y;
-  int z;
-} iPoint;
-
-typedef struct {
   Point lower_left;
   Point upper_right;
 } Rectangle;
@@ -33,7 +27,6 @@ typedef struct {
 
 typedef struct Edge {
   float x_intercept;
-  //float x_accumulator;
   float m, b; // y = m*x + b
   union {
     struct {
