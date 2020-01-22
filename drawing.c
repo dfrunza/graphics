@@ -206,14 +206,25 @@ make_grayscale_rgb32(uint8_t intensity) {
 }
 
 void
+increase_pixel_intensity(DeviceWindow* device_window, int x, int y, int intensity) {
+
+}
+
+uint32_t*
+get_device_window_pixel_at(DeviceWindow* device_window, int x, int y) {
+  uint32_t* result = device_window->pixel_buffer + device_window->width*y + x;
+  return result;
+}
+
+void
 draw_pixel_black(DeviceWindow* device_window, int x, int y) {
-  uint32_t* p = device_window->pixel_buffer + device_window->width*y + x;
+  uint32_t* p = get_device_window_pixel_at(device_window, x, y);
   *p = make_grayscale_rgb32(0);
 }
 
 void
 draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t intensity) {
-  uint32_t* p = device_window->pixel_buffer + device_window->width*y + x;
+  uint32_t* p = get_device_window_pixel_at(device_window, x, y);
   *p = make_grayscale_rgb32(intensity);
 }
 
@@ -274,7 +285,19 @@ set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device
   int pixel_x = floor((x - drawing_surface->x_min)/drawing_surface->pixel_width);
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
-  draw_pixel_black(device_window, pixel_x, pixel_y);
+  persistent float intensity_level_map[3][3] = {
+    {0.f, 1.f/8.f, 0.f},
+    {1.f/8.f, 1.f/2.f, 1.f/8.f},
+    {0.f, 1.f/8.f, 0.f}
+  };
+  int intensity_box_x = pixel_x % 3;
+  int intensity_box_y = pixel_y % 3;
+  int pixel_intensity = round(intensity_level_map[intensity_box_x][intensity_box_y]*255.f);
+  int device_pixel_x = pixel_x/3;
+  int device_pixel_y = pixel_y/3;
+
+  increase_pixel_intensity(device_window, device_pixel_x, device_pixel_y, pixel_intensity);
+  //draw_pixel_black(device_window, pixel_x, pixel_y);
 }
 
 bool
@@ -545,12 +568,6 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
   assert(edge_heap.count >= 2);
   int at_y = 0;
   float y = y_intercept_at(drawing_surface, at_y);
-  //while (edge_heap.count > 0 &&
-  //       (edge_heap.entries[1].y0 >= y) &&
-  //       (edge_heap.entries[1].y0 - y) < drawing_surface->pixel_height) {
-  //  Edge edge = pop_polygon_edge(&edge_heap);
-  //  insert_active_edge(&active_edge_list, &edge);
-  //}
   while (at_y < drawing_surface->y_pixel_count) {
     printf("--------------- %d -----------------\n", at_y);
     printf("y = %.4f\n", y);
@@ -942,8 +959,8 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
 void
 draw(DeviceWindow* device_window) {
   DrawingSurface drawing_surface = {0};
-  drawing_surface.x_pixel_count = device_window->width;
-  drawing_surface.y_pixel_count = device_window->height;
+  drawing_surface.x_pixel_count = device_window->width*3;
+  drawing_surface.y_pixel_count = device_window->height*3;
   drawing_surface.x_min = -1.f;
   drawing_surface.x_max = 1.f;
   drawing_surface.y_min = -1.f;
@@ -953,7 +970,7 @@ draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  Shape* shape = find_shape(L'g');
+  Shape* shape = find_shape(L'/');
   assert (shape);
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
@@ -961,8 +978,8 @@ draw(DeviceWindow* device_window) {
 
   ViewWindow view_window = {0};
   view_window.lower_left = shape_bb.lower_left;
-  view_window.width = 4770.f;
-  view_window.height = 4770.f;
+  view_window.width = 3000.f;
+  view_window.height = 3000.f;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
   view_window.center.x = view_window.lower_left.x + view_window.width/2.f;

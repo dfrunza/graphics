@@ -15,6 +15,7 @@
 #define local static
 #define global static
 #define internal static
+#define persistent static
 #define true 1u
 #define false 0u
 #define bool uint32_t
