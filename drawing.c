@@ -255,30 +255,6 @@ float_is_equal(float a, float b) {
   return result;
 }
 
-bool
-float_is_greater(float a, float b) {
-  bool result = (a > b) && !float_is_equal(a, b);
-  return result;
-}
-
-bool
-float_is_greater_or_equal(float a, float b) {
-  bool result = float_is_greater(a, b) || float_is_equal(a, b);
-  return result;
-}
-
-bool
-float_is_less(float a, float b) {
-  bool result = (a < b) && !float_is_equal(a, b);
-  return result;
-}
-
-bool
-float_is_less_or_equal(float a, float b) {
-  bool result = float_is_less(a, b) || float_is_equal(a, b);
-  return result;
-}
-
 float
 drawing_surface_to_device_window_y_value(DrawingSurface* drawing_surface, float y) {
   float result = (y - drawing_surface->y_min) / drawing_surface->pixel_height;
@@ -295,7 +271,7 @@ void
 set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device_window, float x, float y) {
   int pixel_y = round((y - drawing_surface->y_min)/drawing_surface->pixel_height);
   assert(pixel_y >= 0 && pixel_y < drawing_surface->y_pixel_count);
-  int pixel_x = round((x - drawing_surface->x_min)/drawing_surface->pixel_width);
+  int pixel_x = floor((x - drawing_surface->x_min)/drawing_surface->pixel_width);
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
   draw_pixel_black(device_window, pixel_x, pixel_y);
@@ -354,9 +330,10 @@ add_polygon_edge(EdgeList* heap, Edge* edge) {
 void
 insert_active_edge(EdgeList* list, Edge* edge) {
   int i = 0;
-  while (float_is_greater_or_equal(edge->x_intercept, list->entries[i].x_intercept)) {
-    ++i;
-    assert (i <= list->count);
+  for (; i < list->count; ++i) {
+    if (edge->x_intercept < list->entries[i].x_intercept) {
+      break;
+    }
   }
   Edge swap_edge = list->entries[i];
   list->entries[i] = *edge;
@@ -380,7 +357,9 @@ remove_active_edge(EdgeList* list, Edge* edge, int i) {
 void
 sort_active_edge_list(EdgeList* list) {
   for (int i = 0; i < list->count; ++i) {
-    for (int j = i; list->entries[j].x_intercept < list->entries[j-1].x_intercept; --j) {
+    for (int j = i;
+         list->entries[j].x_intercept < list->entries[j-1].x_intercept;
+         --j) {
       Edge t = list->entries[j];
       list->entries[j] = list->entries[j-1];
       list->entries[j-1] = t;
@@ -491,15 +470,9 @@ make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
       assert (fabs(edge->y1 - next_edge->y0) < drawing_surface->pixel_height);
       if (edge->y1 > edge->y0) {
         edge->x_intercept = edge->x0;
-        //if (float_is_greater(next_edge->y1, edge->y1)) {
-        //  edge->y1 -= drawing_surface->pixel_height; //FLOAT_EPSILON;
-        //}
       }
       else if (edge->y1 < edge->y0) {
         edge->x_intercept = edge->x1;
-        //if (float_is_greater(prev_edge->y0, edge->y0)) {
-        //  prev_edge->y1 += drawing_surface->pixel_height; //FLOAT_EPSILON;
-        //}
       }
       else assert(false);
 
@@ -518,13 +491,6 @@ make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
   }
 
   polygon->edge_list = edge_list;
-}
-
-void
-update_x_intercept(Edge* edge, float y) {
-  if (edge->m != INFINITY) {
-    edge->x_intercept = (y - edge->b)/edge->m;
-  }
 }
 
 Matrix3
@@ -579,18 +545,26 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
   assert(edge_heap.count >= 2);
   int at_y = 0;
   float y = y_intercept_at(drawing_surface, at_y);
-  while (edge_heap.count > 0 &&
-         (edge_heap.entries[1].y0 >= y) &&
-         (edge_heap.entries[1].y0 - y) < drawing_surface->pixel_height) {
-    Edge edge = pop_polygon_edge(&edge_heap);
-    insert_active_edge(&active_edge_list, &edge);
-  }
-  do {
+  //while (edge_heap.count > 0 &&
+  //       (edge_heap.entries[1].y0 >= y) &&
+  //       (edge_heap.entries[1].y0 - y) < drawing_surface->pixel_height) {
+  //  Edge edge = pop_polygon_edge(&edge_heap);
+  //  insert_active_edge(&active_edge_list, &edge);
+  //}
+  while (at_y < drawing_surface->y_pixel_count) {
     printf("--------------- %d -----------------\n", at_y);
     printf("y = %.4f\n", y);
     for (int i = 0; i < active_edge_list.count; ++i) {
       Edge* edge = &active_edge_list.entries[i];
-      update_x_intercept(edge, y);
+      if (edge->m != INFINITY) {
+        edge->x_intercept = (y - edge->b)/edge->m;
+        if (edge->x_intercept < drawing_surface->x_min) {
+          edge->x_intercept = drawing_surface->x_min;
+        }
+        else if (edge->x_intercept > drawing_surface->x_max) {
+          edge->x_intercept = drawing_surface->x_max;
+        }
+      }
     }
 
     sort_active_edge_list(&active_edge_list);
@@ -625,7 +599,7 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
       Edge edge = pop_polygon_edge(&edge_heap);
       insert_active_edge(&active_edge_list, &edge);
     }
-  } while (at_y < drawing_surface->y_pixel_count);
+  }
 }
 
 
@@ -828,14 +802,14 @@ does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, f
   if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
     int x = clipping_boundary[clipping_edge];
     result = !float_is_equal(p0->x, p1->x) &&
-      ((float_is_greater(p0->x, x) && float_is_less(p1->x, x)) ||
-       (float_is_less(p0->x, x) && (p1->x > x)));
+      ((p0->x > x) && (p1->x < x) ||
+       (p0->x < x) && (p1->x > x));
   }
   else if (clipping_edge == ClipEdge_Bottom || clipping_edge == ClipEdge_Top) {
     int y = clipping_boundary[clipping_edge];
     result = !float_is_equal(p0->y, p1->y) &&
-      ((float_is_greater(p0->y, y) && float_is_less(p1->y, y)) ||
-       (float_is_less(p0->y, y) && float_is_greater(p1->y, y)));
+      ((p0->y > y) && (p1->y < y) ||
+       (p0->y < y) && (p1->y > y));
   }
   else {
     assert(false);
@@ -858,22 +832,22 @@ bool
 is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   bool result = false;
   if (clipping_edge == ClipEdge_Left) {
-    if (float_is_greater_or_equal(v->x, clipping_boundary[ClipEdge_Left])) {
+    if (v->x >= clipping_boundary[ClipEdge_Left]) {
       result = true;
     }
   }
   else if (clipping_edge == ClipEdge_Right) {
-    if (float_is_less_or_equal(v->x, clipping_boundary[ClipEdge_Right])) {
+    if (v->x <= clipping_boundary[ClipEdge_Right]) {
       result = true;
     }
   }
   else if (clipping_edge == ClipEdge_Bottom) {
-    if (float_is_greater_or_equal(v->y, clipping_boundary[ClipEdge_Bottom])) {
+    if (v->y >= clipping_boundary[ClipEdge_Bottom]) {
       result = true;
     }
   }
   else if (clipping_edge == ClipEdge_Top) {
-    if (float_is_less_or_equal(v->y, clipping_boundary[ClipEdge_Top])) {
+    if (v->y <= clipping_boundary[ClipEdge_Top]) {
       result = true;
     }
   }
@@ -979,7 +953,7 @@ draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  Shape* shape = find_shape(L'X');
+  Shape* shape = find_shape(L'g');
   assert (shape);
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
@@ -987,8 +961,8 @@ draw(DeviceWindow* device_window) {
 
   ViewWindow view_window = {0};
   view_window.lower_left = shape_bb.lower_left;
-  view_window.width = 2400.f;
-  view_window.height = 2400.f;
+  view_window.width = 4770.f;
+  view_window.height = 4770.f;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
   view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
@@ -1014,11 +988,11 @@ draw(DeviceWindow* device_window) {
   print_shape_points(shape);
 
   Matrix3 translate_window = {0};
-  mk_translate_matrix(&translate_window, -view_window.center.x, -view_window.center.y);
+  mk_translate_matrix(&translate_window, -view_window.center.x+100, -view_window.center.y+100);
   apply_xform(shape, &translate_window);
 
   Matrix3 scale_window = {0};
-  mk_scale_matrix(&scale_window, 1.f/view_window.width, 1.f/view_window.height);
+  mk_scale_matrix(&scale_window, 2.f/view_window.width, 2.f/view_window.height);
   apply_xform(shape, &scale_window);
 
   clear_device_window(device_window, 255);

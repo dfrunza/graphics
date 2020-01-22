@@ -84,8 +84,8 @@ create_x11_image(xcb_connection_t* conn, DeviceWindow* device_window) {
   uint8_t* image_bytes = push_array(uint8_t, image_size_bytes);
   xcb_image_t* result = xcb_image_create(device_window->width, device_window->height, XCB_IMAGE_FORMAT_Z_PIXMAP,
                                          fmt->scanline_pad, fmt->depth, fmt->bits_per_pixel,
-                                      0, setup->image_byte_order, XCB_IMAGE_ORDER_LSB_FIRST,
-                                      image_bytes, image_size_bytes, image_bytes);
+                                         0, setup->image_byte_order, XCB_IMAGE_ORDER_LSB_FIRST,
+                                         image_bytes, image_size_bytes, image_bytes);
   return result;
 }
 
