@@ -1,6 +1,19 @@
 // -*- coding: utf-8 -*-
 
 typedef struct {
+  union {
+    uint32_t bytes;
+    struct {
+      uint8_t R;
+      uint8_t G;
+      uint8_t B;
+      uint8_t X;
+    };
+  };
+  uint8_t blackness;
+} RgbPixel;
+
+typedef struct {
   uint32_t R;
   uint32_t G;
   uint32_t B;
@@ -133,6 +146,7 @@ typedef struct {
 
 typedef struct {
   uint32_t* pixel_buffer;
+  uint8_t* blackness_buffer;
   int width;
   int height;
   int bytes_per_pixel;

@@ -200,20 +200,35 @@ mk_flip_vertical_matrix(Matrix3* T) {
 }
 
 uint32_t
-make_grayscale_rgb32(uint8_t intensity) {
-  uint32_t value = intensity;
+make_grayscale_rgb32(uint8_t blackness) {
+  uint32_t value = blackness;
   return value | value << 8 | value << 16;
-}
-
-void
-increase_pixel_intensity(DeviceWindow* device_window, int x, int y, int intensity) {
-
 }
 
 uint32_t*
 get_device_window_pixel_at(DeviceWindow* device_window, int x, int y) {
   uint32_t* result = device_window->pixel_buffer + device_window->width*y + x;
   return result;
+}
+
+uint8_t*
+get_device_window_pixel_blackness_at(DeviceWindow* device_window, int x, int y) {
+  uint8_t* result = device_window->blackness_buffer + device_window->width*y + x;
+  return result;
+}
+
+void
+increase_pixel_blackness(DeviceWindow* device_window, int x, int y, int blackness) {
+  RgbPixel* pixel = (RgbPixel*)get_device_window_pixel_at(device_window, x, y);
+
+  int new_blackness = pixel->X + blackness;
+  if (new_blackness > 255) {
+    new_blackness = 255;
+  }
+  pixel->X = new_blackness;
+  pixel->R = 255 - pixel->X;
+  pixel->G = 255 - pixel->X;
+  pixel->B = 255 - pixel->X;
 }
 
 void
@@ -223,9 +238,9 @@ draw_pixel_black(DeviceWindow* device_window, int x, int y) {
 }
 
 void
-draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t intensity) {
+draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t blackness) {
   uint32_t* p = get_device_window_pixel_at(device_window, x, y);
-  *p = make_grayscale_rgb32(intensity);
+  *p = make_grayscale_rgb32(blackness);
 }
 
 void
@@ -285,18 +300,18 @@ set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device
   int pixel_x = floor((x - drawing_surface->x_min)/drawing_surface->pixel_width);
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
-  persistent float intensity_level_map[3][3] = {
-    {0.f, 1.f/8.f, 0.f},
-    {1.f/8.f, 1.f/2.f, 1.f/8.f},
-    {0.f, 1.f/8.f, 0.f}
+  persistent float blackness_level_map[3][3] = {
+    {0.f, 1.f/4.f, 0.f},
+    {1.f/4.f, 1.f/2.f, 1.f/4.f},
+    {0.f, 1.f/4.f, 0.f}
   };
-  int intensity_box_x = pixel_x % 3;
-  int intensity_box_y = pixel_y % 3;
-  int pixel_intensity = round(intensity_level_map[intensity_box_x][intensity_box_y]*255.f);
+  int blackness_box_x = pixel_x % 3;
+  int blackness_box_y = pixel_y % 3;
+  int pixel_blackness = round(blackness_level_map[blackness_box_x][blackness_box_y]*255.f);
   int device_pixel_x = pixel_x/3;
   int device_pixel_y = pixel_y/3;
 
-  increase_pixel_intensity(device_window, device_pixel_x, device_pixel_y, pixel_intensity);
+  increase_pixel_blackness(device_window, device_pixel_x, device_pixel_y, pixel_blackness);
   //draw_pixel_black(device_window, pixel_x, pixel_y);
 }
 
@@ -621,12 +636,12 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
 
 
 void
-clear_device_window(DeviceWindow* device_window, uint8_t intensity) {
+clear_device_window(DeviceWindow* device_window, uint8_t blackness) {
   int i, j;
   uint32_t* p = device_window->pixel_buffer;
   for (int j = 0; j < device_window->height; ++j) {
     for (int i = 0; i < device_window->width; ++i) {
-      *p++ = make_grayscale_rgb32(intensity);
+      *p++ = make_grayscale_rgb32(blackness);
     }
   }
 }
@@ -970,7 +985,7 @@ draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  Shape* shape = find_shape(L'/');
+  Shape* shape = find_shape(L'a');
   assert (shape);
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
@@ -978,8 +993,8 @@ draw(DeviceWindow* device_window) {
 
   ViewWindow view_window = {0};
   view_window.lower_left = shape_bb.lower_left;
-  view_window.width = 3000.f;
-  view_window.height = 3000.f;
+  view_window.width = 1600.f;
+  view_window.height = 1600.f;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
   view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
