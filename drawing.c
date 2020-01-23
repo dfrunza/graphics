@@ -301,9 +301,9 @@ set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
   persistent float blackness_level_map[3][3] = {
-    {0.f, 1.f/4.f, 0.f},
-    {1.f/4.f, 1.f/2.f, 1.f/4.f},
-    {0.f, 1.f/4.f, 0.f}
+    {0.f, 1.f/12.f, 0.f},
+    {1.f/12.f, 2.f/3.f, 1.f/12.f},
+    {0.f, 1.f/12.f, 0.f}
   };
   int blackness_box_x = pixel_x % 3;
   int blackness_box_y = pixel_y % 3;
@@ -539,7 +539,7 @@ new_empty_matrix3() {
 
 float
 y_intercept_at(DrawingSurface* drawing_surface, int scanline_nr) {
-  float result = drawing_surface->y_min + (drawing_surface->pixel_height * scanline_nr);
+  float result = drawing_surface->y_min + (drawing_surface->pixel_height * (float)scanline_nr);
   return result;
 }
 
@@ -589,7 +589,7 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
     for (int i = 0; i < active_edge_list.count; ++i) {
       Edge* edge = &active_edge_list.entries[i];
       if (edge->m != INFINITY) {
-        edge->x_intercept = (y - edge->b)/edge->m;
+        edge->x_intercept = round((y - edge->b)/edge->m);
         if (edge->x_intercept < drawing_surface->x_min) {
           edge->x_intercept = drawing_surface->x_min;
         }
@@ -985,7 +985,7 @@ draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  Shape* shape = find_shape(L'a');
+  Shape* shape = find_shape(L'A');
   assert (shape);
   Rectangle shape_bb = get_bounding_box(shape);
   printf("Bounding box: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
