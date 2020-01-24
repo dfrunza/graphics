@@ -137,8 +137,8 @@ main(int argc, char** argv) {
   //printf("root depth %d\n",screen->root_depth);
 
   DeviceWindow device_window = {0};
-  device_window.width = 100;
-  device_window.height = 100;
+  device_window.width = 400;
+  device_window.height = 400;
   device_window.bytes_per_pixel = 4;
   device_window.bits_per_pixel = device_window.bytes_per_pixel*8;
   device_window.depth = 24; // FIXME: What is this and why should it be equal to 24?

@@ -301,13 +301,17 @@ set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
   persistent float blackness_level_map[3][3] = {
-    {0.f, 1.f/12.f, 0.f},
-    {1.f/12.f, 2.f/3.f, 1.f/12.f},
-    {0.f, 1.f/12.f, 0.f}
+    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+    {1.f/9.f, 1.f/9.f, 1.f/9.f}
+
+//    {0.f, 1.f/8.f, 0.f},
+//    {1.f/8.f, 1.f/2.f, 1.f/8.f},
+//    {0.f, 1.f/8.f, 0.f}
   };
   int blackness_box_x = pixel_x % 3;
   int blackness_box_y = pixel_y % 3;
-  int pixel_blackness = round(blackness_level_map[blackness_box_x][blackness_box_y]*255.f);
+  int pixel_blackness = floor(blackness_level_map[blackness_box_x][blackness_box_y]*255.f);
   int device_pixel_x = pixel_x/3;
   int device_pixel_y = pixel_y/3;
 
@@ -418,6 +422,12 @@ Shape* find_shape(wchar_t character) {
   return result;
 }
 
+Point
+new_empty_point() {
+  Point result = {0};
+  return result;
+}
+
 EdgeList
 new_empty_edge_list() {
   EdgeList result = {0};
@@ -433,6 +443,12 @@ new_empty_edge() {
 Polygon
 new_empty_polygon() {
   Polygon result = {0};
+  return result;
+}
+
+Shape
+new_empty_shape() {
+  Shape result = {0};
   return result;
 }
 
@@ -524,8 +540,8 @@ make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
       }
     }
     edge_list[i].count = edge_count;
-    printf("Contour #%d\n", i);
-    print_edge_list(&edge_list[i]);
+    //printf("Contour #%d\n", i);
+    //print_edge_list(&edge_list[i]);
   }
 
   polygon->edge_list = edge_list;
@@ -584,8 +600,8 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
   int at_y = 0;
   float y = y_intercept_at(drawing_surface, at_y);
   while (at_y < drawing_surface->y_pixel_count) {
-    printf("--------------- %d -----------------\n", at_y);
-    printf("y = %.4f\n", y);
+    //printf("--------------- %d -----------------\n", at_y);
+    //printf("y = %.4f\n", y);
     for (int i = 0; i < active_edge_list.count; ++i) {
       Edge* edge = &active_edge_list.entries[i];
       if (edge->m != INFINITY) {
@@ -600,14 +616,14 @@ draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* de
     }
 
     sort_active_edge_list(&active_edge_list);
-    print_edge_list(&active_edge_list);
+    //print_edge_list(&active_edge_list);
 
     assert((active_edge_list.count % 2) == 0);
     for (int i = 0; i < active_edge_list.count; i += 2) {
       Edge* left_edge = &active_edge_list.entries[i];
       Edge* right_edge = &active_edge_list.entries[i+1];
-      printf("left_edge=(%.6f,%.6f)\n", left_edge->x_intercept, y);
-      printf("right_edge=(%.6f,%.6f)\n", right_edge->x_intercept, y);
+      //printf("left_edge=(%.6f,%.6f)\n", left_edge->x_intercept, y);
+      //printf("right_edge=(%.6f,%.6f)\n", right_edge->x_intercept, y);
 
       set_pixel_on_device_window(drawing_surface, device_window, left_edge->x_intercept, y);
       for (float x = left_edge->x_intercept;
@@ -927,12 +943,12 @@ do_clip_point(Point* v, ClippingEdge clipping_edge, Point* first_clipped[static 
 }
 
 Shape
-clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
-  Shape clipped_shape = {0};
-  clipped_shape.n_contours = shape->n_contours;
-  clipped_shape.contours = push_array(int, shape->n_contours);
-  clipped_shape.points = push_array(Point, shape->total_point_count*2);
-  Point* clipped_contour = clipped_shape.points;
+clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT],
+           Shape* clipped_shape) {
+  clipped_shape->n_contours = shape->n_contours;
+  clipped_shape->contours = push_array(int, shape->n_contours);
+  clipped_shape->points = push_array(Point, shape->total_point_count*2);
+  Point* clipped_contour = clipped_shape->points;
   Point* shape_points = shape->points;
   for (int i = 0; i < shape->n_contours; ++i) {
     int contour_vertex_count = shape->contours[i];
@@ -964,11 +980,10 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT]) {
         }
       }
     }
-    clipped_shape.contours[i] = clipped_vertex_count;
+    clipped_shape->contours[i] = clipped_vertex_count;
     clipped_contour += clipped_vertex_count;
-    clipped_shape.total_point_count += clipped_vertex_count;
+    clipped_shape->total_point_count += clipped_vertex_count;
   }
-  return clipped_shape;
 }
 
 void
@@ -985,16 +1000,9 @@ draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  Shape* shape = find_shape(L'A');
-  assert (shape);
-  Rectangle shape_bb = get_bounding_box(shape);
-  printf("Bounding box: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
-        shape_bb.lower_left.x, shape_bb.lower_left.y, shape_bb.upper_right.x, shape_bb.upper_right.y);
-
   ViewWindow view_window = {0};
-  view_window.lower_left = shape_bb.lower_left;
-  view_window.width = 1600.f;
-  view_window.height = 1600.f;
+  view_window.width = 4400.f;
+  view_window.height = 4400.f;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
   view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
@@ -1012,26 +1020,59 @@ draw(DeviceWindow* device_window) {
          clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Right],
          clipping_boundary[ClipEdge_Bottom], clipping_boundary[ClipEdge_Top]);
 
-  printf("---- BEFORE CLIPPING ----\n");
-  print_shape_points(shape);
-  Shape clipped_shape = clip_shape(shape, clipping_boundary);
-  shape = &clipped_shape;
-  printf("---- AFTER CLIPPING ----\n");
-  print_shape_points(shape);
+  //wchar_t* my_string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  wchar_t* my_string = L"abcdefghijklmnopqrstuvwxyz";
+  //wchar_t* my_string = L"0123456789";
+  //wchar_t* my_string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
+  int string_length = wcslen(my_string);
+  Rectangle* shape_bb = push_array(Rectangle, string_length);
+  Rectangle max_bb = {0};
+  for (int i = 0; i < string_length; ++i) {
+    Shape* shape = find_shape(my_string[i]);
+    shape_bb[i] = get_bounding_box(shape);
+    printf("Bounding box '%lc': (%0.4f, %0.4f), (%0.4f, %0.4f)\n", my_string[i],
+            shape_bb[i].lower_left.x, shape_bb[i].lower_left.y, shape_bb[i].upper_right.x, shape_bb[i].upper_right.y);
+    if (shape_bb[i].lower_left.x < max_bb.lower_left.x ||
+        shape_bb[i].lower_left.y < max_bb.lower_left.y ||
+        shape_bb[i].upper_right.x > max_bb.upper_right.x ||
+        shape_bb[i].upper_right.y > max_bb.upper_right.y) {
+      max_bb = shape_bb[i];
+    }
+  }
+  printf("Max. extent bbpx: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
+         max_bb.lower_left.x, max_bb.lower_left.y, max_bb.upper_right.x, max_bb.upper_right.y);
+  int monospace_width = max_bb.upper_right.x;
+  int monospace_height = max_bb.upper_right.y;
+  int character_spacing = 36;
 
-  Matrix3 translate_window = {0};
-  mk_translate_matrix(&translate_window, -view_window.center.x+100, -view_window.center.y+100);
-  apply_xform(shape, &translate_window);
-
-  Matrix3 scale_window = {0};
-  mk_scale_matrix(&scale_window, 2.f/view_window.width, 2.f/view_window.height);
-  apply_xform(shape, &scale_window);
+  Shape* shape_string = push_array(Shape, string_length);
+  for (int i = 0; i < string_length; ++i) {
+    //printf("---- BEFORE CLIPPING ----\n");
+    //print_shape_points(shape);
+    Shape* shape = find_shape(my_string[i]);
+    Matrix3 horizontal_align_xform = {0};
+    mk_translate_matrix(&horizontal_align_xform, i*(monospace_width+character_spacing), 100);
+    apply_xform(shape, &horizontal_align_xform);
+    clip_shape(shape, clipping_boundary, &shape_string[i]);
+    //printf("---- AFTER CLIPPING ----\n");
+    //print_shape_points(shape);
+  }
 
   clear_device_window(device_window, 255);
-  if (shape->total_point_count > 0) {
-    Polygon polygon = {0};
-    make_polygon(&polygon, shape, &drawing_surface);
-    draw_polygon(&polygon, &drawing_surface, device_window);
+  for (int i = 0; i < string_length; ++i) {
+    Matrix3 translate_window = {0};
+    mk_translate_matrix(&translate_window, -view_window.center.x+100, -view_window.center.y+160);
+    apply_xform(&shape_string[i], &translate_window);
+
+    Matrix3 scale_window = {0};
+    mk_scale_matrix(&scale_window, drawing_surface.width/view_window.width, drawing_surface.height/view_window.height);
+    apply_xform(&shape_string[i], &scale_window);
+
+    if (shape_string[i].total_point_count > 0) {
+      Polygon polygon = {0};
+      make_polygon(&polygon, &shape_string[i], &drawing_surface);
+      draw_polygon(&polygon, &drawing_surface, device_window);
+    }
   }
 }
 
