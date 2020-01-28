@@ -301,13 +301,13 @@ set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
   persistent float blackness_level_map[3][3] = {
-    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-    {1.f/9.f, 1.f/9.f, 1.f/9.f}
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f}
 
-//    {0.f, 1.f/8.f, 0.f},
-//    {1.f/8.f, 1.f/2.f, 1.f/8.f},
-//    {0.f, 1.f/8.f, 0.f}
+    {1.f/16.f, 1.f/8.f, 1.f/16.f},
+    {1.f/8.f, 1.f/4.f, 1.f/8.f},
+    {1.f/16.f, 1.f/8.f, 1.f/16.f}
   };
   int blackness_box_x = pixel_x % 3;
   int blackness_box_y = pixel_y % 3;
@@ -316,7 +316,6 @@ set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device
   int device_pixel_y = pixel_y/3;
 
   increase_pixel_blackness(device_window, device_pixel_x, device_pixel_y, pixel_blackness);
-  //draw_pixel_black(device_window, pixel_x, pixel_y);
 }
 
 bool
@@ -1000,13 +999,43 @@ draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
+  //wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  //wchar_t* string = L"abcdefghijklmnopqrstuvwxyz";
+  //wchar_t* string = L"0123456789";
+  wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
+  int string_length = wcslen(string);
+
+  Rectangle* shape_bb = push_array(Rectangle, string_length);
+  Rectangle max_bb = {0};
+  for (int i = 0; i < string_length; ++i) {
+    Shape* shape = find_shape(string[i]);
+    shape_bb[i] = get_bounding_box(shape);
+    printf("Bounding box '%lc': (%0.4f, %0.4f), (%0.4f, %0.4f)\n", string[i],
+            shape_bb[i].lower_left.x, shape_bb[i].lower_left.y, shape_bb[i].upper_right.x, shape_bb[i].upper_right.y);
+    if (shape_bb[i].lower_left.x < max_bb.lower_left.x ||
+        shape_bb[i].lower_left.y < max_bb.lower_left.y ||
+        shape_bb[i].upper_right.x > max_bb.upper_right.x ||
+        shape_bb[i].upper_right.y > max_bb.upper_right.y) {
+      max_bb = shape_bb[i];
+    }
+  }
+  printf("Max. extent bbpx: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
+         max_bb.lower_left.x, max_bb.lower_left.y, max_bb.upper_right.x, max_bb.upper_right.y);
+  int font_width = max_bb.upper_right.x;
+  int font_height = max_bb.upper_right.y;
+  int font_underhang = -max_bb.lower_left.y;
+  int font_size = font_height + font_underhang;
+  int character_spacing = truncate_float(0.5f*font_height);
+  int line_spacing = font_size + 0.2f*font_height;
+
   ViewWindow view_window = {0};
-  view_window.width = 4400.f;
-  view_window.height = 4400.f;
+  view_window.width = 4800.f;
+  view_window.height = 4800.f;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
   view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
   view_window.center.y = view_window.lower_left.y + view_window.height/2.f;
+  view_window.lower_left = max_bb.lower_left;
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
   clipping_boundary[ClipEdge_Left] = view_window.lower_left.x;
@@ -1020,57 +1049,47 @@ draw(DeviceWindow* device_window) {
          clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Right],
          clipping_boundary[ClipEdge_Bottom], clipping_boundary[ClipEdge_Top]);
 
-  //wchar_t* my_string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  wchar_t* my_string = L"abcdefghijklmnopqrstuvwxyz";
-  //wchar_t* my_string = L"0123456789";
-  //wchar_t* my_string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  int string_length = wcslen(my_string);
-  Rectangle* shape_bb = push_array(Rectangle, string_length);
-  Rectangle max_bb = {0};
+  Shape* shapes = push_array(Shape, string_length);
   for (int i = 0; i < string_length; ++i) {
-    Shape* shape = find_shape(my_string[i]);
-    shape_bb[i] = get_bounding_box(shape);
-    printf("Bounding box '%lc': (%0.4f, %0.4f), (%0.4f, %0.4f)\n", my_string[i],
-            shape_bb[i].lower_left.x, shape_bb[i].lower_left.y, shape_bb[i].upper_right.x, shape_bb[i].upper_right.y);
-    if (shape_bb[i].lower_left.x < max_bb.lower_left.x ||
-        shape_bb[i].lower_left.y < max_bb.lower_left.y ||
-        shape_bb[i].upper_right.x > max_bb.upper_right.x ||
-        shape_bb[i].upper_right.y > max_bb.upper_right.y) {
-      max_bb = shape_bb[i];
+    Shape* shape_template = find_shape(string[i]);
+    shapes[i] = new_empty_shape();
+    shapes[i].n_contours = shape_template->n_contours;
+    shapes[i].contours = push_array(int, shapes[i].n_contours);
+    for (int k = 0; k < shapes[i].n_contours; ++k) {
+      shapes[i].contours[k] = shape_template->contours[k];
+    }
+    shapes[i].total_point_count = shape_template->total_point_count;
+    shapes[i].points = push_array(Point, shapes[i].total_point_count);
+    for (int k = 0; k < shapes[i].total_point_count; ++k) {
+      shapes[i].points[k] = shape_template->points[k];
     }
   }
-  printf("Max. extent bbpx: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
-         max_bb.lower_left.x, max_bb.lower_left.y, max_bb.upper_right.x, max_bb.upper_right.y);
-  int monospace_width = max_bb.upper_right.x;
-  int monospace_height = max_bb.upper_right.y;
-  int character_spacing = 36;
 
-  Shape* shape_string = push_array(Shape, string_length);
   for (int i = 0; i < string_length; ++i) {
-    //printf("---- BEFORE CLIPPING ----\n");
-    //print_shape_points(shape);
-    Shape* shape = find_shape(my_string[i]);
     Matrix3 horizontal_align_xform = {0};
-    mk_translate_matrix(&horizontal_align_xform, i*(monospace_width+character_spacing), 100);
-    apply_xform(shape, &horizontal_align_xform);
-    clip_shape(shape, clipping_boundary, &shape_string[i]);
-    //printf("---- AFTER CLIPPING ----\n");
-    //print_shape_points(shape);
+    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 0);
+    apply_xform(&shapes[i], &horizontal_align_xform);
+  }
+
+  Shape* clipped_shapes = push_array(Shape, string_length);
+  for (int i = 0; i < string_length; ++i) {
+    clipped_shapes[i] = new_empty_shape();
+    clip_shape(&shapes[i], clipping_boundary, &clipped_shapes[i]);
   }
 
   clear_device_window(device_window, 255);
   for (int i = 0; i < string_length; ++i) {
     Matrix3 translate_window = {0};
-    mk_translate_matrix(&translate_window, -view_window.center.x+100, -view_window.center.y+160);
-    apply_xform(&shape_string[i], &translate_window);
+    mk_translate_matrix(&translate_window, -view_window.center.x+0, -view_window.center.y+font_underhang);
+    apply_xform(&clipped_shapes[i], &translate_window);
 
     Matrix3 scale_window = {0};
     mk_scale_matrix(&scale_window, drawing_surface.width/view_window.width, drawing_surface.height/view_window.height);
-    apply_xform(&shape_string[i], &scale_window);
+    apply_xform(&clipped_shapes[i], &scale_window);
 
-    if (shape_string[i].total_point_count > 0) {
+    if (clipped_shapes[i].total_point_count > 0) {
       Polygon polygon = {0};
-      make_polygon(&polygon, &shape_string[i], &drawing_surface);
+      make_polygon(&polygon, &clipped_shapes[i], &drawing_surface);
       draw_polygon(&polygon, &drawing_surface, device_window);
     }
   }
