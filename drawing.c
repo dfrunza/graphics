@@ -999,10 +999,11 @@ draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  //wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  //wchar_t* string = L"AACDEFGHIJKLMNOPQRSTUVWXYZ";
   //wchar_t* string = L"abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
-  wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
+  //wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
+  wchar_t* string = L"clipping_boundary[ClipEdge_Left]";
   int string_length = wcslen(string);
 
   Rectangle* shape_bb = push_array(Rectangle, string_length);
@@ -1012,21 +1013,26 @@ draw(DeviceWindow* device_window) {
     shape_bb[i] = get_bounding_box(shape);
     printf("Bounding box '%lc': (%0.4f, %0.4f), (%0.4f, %0.4f)\n", string[i],
             shape_bb[i].lower_left.x, shape_bb[i].lower_left.y, shape_bb[i].upper_right.x, shape_bb[i].upper_right.y);
-    if (shape_bb[i].lower_left.x < max_bb.lower_left.x ||
-        shape_bb[i].lower_left.y < max_bb.lower_left.y ||
-        shape_bb[i].upper_right.x > max_bb.upper_right.x ||
-        shape_bb[i].upper_right.y > max_bb.upper_right.y) {
-      max_bb = shape_bb[i];
+    if (shape_bb[i].lower_left.x < max_bb.lower_left.x) {
+      max_bb.lower_left.x = shape_bb[i].lower_left.x;
+    }
+    if (shape_bb[i].lower_left.y < max_bb.lower_left.y) {
+      max_bb.lower_left.y = shape_bb[i].lower_left.y;
+    }
+    if (shape_bb[i].upper_right.x > max_bb.upper_right.x) {
+      max_bb.upper_right.x = shape_bb[i].upper_right.x;
+    }
+    if (shape_bb[i].upper_right.y > max_bb.upper_right.y) {
+      max_bb.upper_right.y = shape_bb[i].upper_right.y;
     }
   }
   printf("Max. extent bbpx: (%0.4f, %0.4f), (%0.4f, %0.4f)\n",
          max_bb.lower_left.x, max_bb.lower_left.y, max_bb.upper_right.x, max_bb.upper_right.y);
-  int font_width = max_bb.upper_right.x;
-  int font_height = max_bb.upper_right.y;
-  int font_underhang = -max_bb.lower_left.y;
-  int font_size = font_height + font_underhang;
-  int character_spacing = truncate_float(0.5f*font_height);
-  int line_spacing = font_size + 0.2f*font_height;
+  int font_width = max_bb.upper_right.x - max_bb.lower_left.x;
+  int font_height = max_bb.upper_right.y - max_bb.lower_left.y;
+  int font_underhang = abs(max_bb.lower_left.y);
+  int character_spacing = truncate_float(0.1f*font_height);
+  int line_spacing = font_height + 0.2f*font_height;
 
   ViewWindow view_window = {0};
   view_window.width = 4800.f;
@@ -1067,7 +1073,7 @@ draw(DeviceWindow* device_window) {
 
   for (int i = 0; i < string_length; ++i) {
     Matrix3 horizontal_align_xform = {0};
-    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 0);
+    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 8*line_spacing);
     apply_xform(&shapes[i], &horizontal_align_xform);
   }
 
@@ -1080,7 +1086,7 @@ draw(DeviceWindow* device_window) {
   clear_device_window(device_window, 255);
   for (int i = 0; i < string_length; ++i) {
     Matrix3 translate_window = {0};
-    mk_translate_matrix(&translate_window, -view_window.center.x+0, -view_window.center.y+font_underhang);
+    mk_translate_matrix(&translate_window, -view_window.center.x+3*font_width, -view_window.center.y+font_underhang);
     apply_xform(&clipped_shapes[i], &translate_window);
 
     Matrix3 scale_window = {0};
