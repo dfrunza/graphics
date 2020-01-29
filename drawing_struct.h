@@ -146,7 +146,6 @@ typedef struct {
 
 typedef struct {
   uint32_t* pixel_buffer;
-  uint8_t* blackness_buffer;
   int width;
   int height;
   int bytes_per_pixel;
