@@ -7,8 +7,8 @@ from freetype import Face, \
 
 # sudo -H pip3 install shapely freetype-py fonttools numpy
 
-FONT_NAME = "DejaVuSansMono"
-FONT_SIZE = 32
+FONT_NAME = "Crisp"
+FONT_SIZE = 20
 CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
 CHAR_LIST += "~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./"
 CHAR_LIST += "▲♠♣★"

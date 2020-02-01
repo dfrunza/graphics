@@ -27,7 +27,7 @@
      inkscape:pageshadow="2"
      inkscape:zoom="1.1030866"
      inkscape:cx="-174.93775"
-     inkscape:cy="-124.04765"
+     inkscape:cy="-269.09519"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -60,5 +60,12 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(0,1703)" />
+     transform="translate(0,1703)">
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m -100,397 38,-76 38,76"
+       id="path60"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccc" />
+  </g>
 </svg>
