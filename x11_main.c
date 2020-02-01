@@ -91,7 +91,7 @@ create_x11_image(xcb_connection_t* conn, DeviceWindow* device_window) {
 }
 
 void
-blit_device_window_to_x11_image(DeviceWindow* device_window, xcb_image_t* x11_image) {
+blit_device_buffer_to_x11_image(DeviceWindow* device_window, xcb_image_t* x11_image) {
 #if 0
   // verbatim
   for (int i = 0; i < image_height; ++i) {
@@ -137,8 +137,8 @@ main(int argc, char** argv) {
   //printf("root depth %d\n",screen->root_depth);
 
   DeviceWindow device_window = {0};
-  device_window.width = 400;
-  device_window.height = 400;
+  device_window.width = 100;
+  device_window.height = 100;
   device_window.bytes_per_pixel = 4;
   device_window.bits_per_pixel = device_window.bytes_per_pixel*8;
   device_window.depth = 24; // FIXME: What is this and why should it be equal to 24?
@@ -183,7 +183,7 @@ main(int argc, char** argv) {
 
   draw(&device_window);
   //draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &drawing_surface);
-  blit_device_window_to_x11_image(&device_window, x11_image);
+  blit_device_buffer_to_x11_image(&device_window, x11_image);
 
   xcb_image_put(connection, pixmap, gc, x11_image, 0, 0, 0);
   xcb_copy_area(connection, pixmap, x11_window, gc, 0, 0, 0, 0, x11_image->width, x11_image->height);
