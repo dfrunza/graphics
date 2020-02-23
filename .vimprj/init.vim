@@ -3,7 +3,7 @@
 " Get path to ".vimprj" folder
 let s:sPath = expand('<sfile>:p:h')
 
-let g:indexer_ctagsCommandLineOptions="--fields=+iaSl --languages=C"
+let g:indexer_ctagsCommandLineOptions="--fields=+iaSl --C-kinds=+p --C++-kinds=+p --extra=+q --languages=C,C++"
 
 " Specify the project's 'indexer_files'"
 let g:indexer_indexerListFilename = s:sPath.'/indexer_files'
@@ -15,7 +15,7 @@ set errorformat+=%f:%l:%c:\ fatal\ %t\rror:\ %m,%-C,%-Z%p^
 set errorformat+=%f:%l:%c:\ %t\arning:\ %m,%-C,%-Z%p^
 set errorformat+=%D%*\\a:\ Entering\ directory\ [`']%f'
 set errorformat+=%X%*\\a:\ Leaving\ directory\ [`']%f'
-set errorformat+=collect2:\ %t\rror:\ ld\ returned\ 1\ exit\ status
+"set errorformat+=collect2:\ %t\rror:\ ld\ returned\ 1\ exit\ status
 
 set shiftwidth=2 " indendation level
 set tabstop=2

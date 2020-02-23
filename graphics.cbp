@@ -3,17 +3,17 @@
 	<FileVersion major="1" minor="6" />
 	<Project>
 		<Option title="graphics" />
-		<Option makefile="./_build.sh" />
+		<Option makefile="_build-dummy.bat" />
 		<Option makefile_is_custom="1" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<MakeCommands>
-			<Build command="./_build.sh" />
+			<Build command="_build-dummy.bat" />
 			<CompileFile command="" />
 			<Clean command="" />
 			<DistClean command="" />
 			<AskRebuildNeeded command="" />
-			<SilentBuild command="./_build.sh &gt; $(CMD_NULL)" />
+			<SilentBuild command="_build-dummy.bat &gt; $(CMD_NULL)" />
 		</MakeCommands>
 		<Build>
 			<Target title="Debug">
@@ -23,22 +23,15 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<MakeCommands>
-					<Build command="./_build.sh" />
+					<Build command="_build-dummy.bat" />
 					<CompileFile command="" />
 					<Clean command="" />
 					<DistClean command="" />
 					<AskRebuildNeeded command="" />
-					<SilentBuild command="./_build.sh &gt; $(CMD_NULL)" />
+					<SilentBuild command="_build-dummy.bat &gt; $(CMD_NULL)" />
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="drawing.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="drawing_struct.h" />
-		<Unit filename="x11_main.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Extensions>
 			<code_completion />
 			<envvars />
