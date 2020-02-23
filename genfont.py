@@ -1,17 +1,15 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import math
-from shapely.geometry import Polygon
 from freetype import Face, \
        FT_LOAD_DEFAULT, FT_LOAD_NO_BITMAP
 
-# sudo -H pip3 install shapely freetype-py fonttools numpy
+# sudo -H pip3 install freetype-py fonttools numpy
 
-FONT_NAME = "Px437_IBM_ISO8"
-FONT_SIZE = 8
+FONT_NAME = "Crisp"
 CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
 CHAR_LIST += "~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./"
-CHAR_LIST += "▲♠♣★"
+CHAR_LIST += "▲♠♣★■▬▄▪▌▐"
 
 def escape_character(character):
   escapable_chars = ("\\", "\'", )
@@ -23,7 +21,8 @@ c_source_file = open("font_shapes.c", "w")
 c_source_file.write("#define FONT_NAME L\"%s\"\n\n" % FONT_NAME)
 
 face = Face("fonts/%s.ttf" % FONT_NAME)
-face.set_char_size(FONT_SIZE*FONT_SIZE)
+face.set_char_size(1, 1, 72, 72)
+print("%s.units_per_EM=%s" % (FONT_NAME, face.units_per_EM))
 
 shape_id = 0
 for character in CHAR_LIST:

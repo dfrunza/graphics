@@ -457,7 +457,7 @@ make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
     polygon->contours[i] += 1;
     Point* p;
 
-    int j = 0; 
+    int j = 0;
     for (; j < shape->contours[i]; ++j) {
       polygon->contours[i][j] = shape_points[j];
     }
@@ -672,7 +672,7 @@ line(int x0, int y0, int x1, int y1) {
       draw_pixel_black(x, y);
     }
   }
-  else 
+  else
   {
     int dx = x1 - x0;
     int dy = y1 - y0;
@@ -758,7 +758,7 @@ ellipse(int center_x, int center_y, int radius_x, int radius_y) {
   int y = radius_y;
   int radius_y_squared = radius_y*radius_y;
   int radius_x_squared = radius_x*radius_x;
-  
+
   int p1 = radius_y_squared - radius_x_squared*radius_y + 0.25*radius_x_squared;
   while (2*radius_y_squared*x < 2*radius_x_squared*y) {
     draw_pixel_black(center_x+x, center_y+y);
@@ -996,7 +996,7 @@ draw(DeviceWindow* device_window) {
   //wchar_t* string = L"abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L")";
+  wchar_t* string = L"▌";
   int string_length = wcslen(string);
 
   Rectangle* shape_bb = push_array(Rectangle, string_length);
@@ -1034,7 +1034,7 @@ draw(DeviceWindow* device_window) {
   ViewWindow view_window = {0};
   view_window.width = 100.f;
   view_window.height = 100.f;
-  view_window.lower_left = max_bb.lower_left;
+  //view_window.lower_left = max_bb.lower_left;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
   view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
