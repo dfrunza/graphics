@@ -4,6 +4,7 @@
 #include <xcb/xcb_image.h>
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_icccm.h>
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +39,7 @@ void assert_(char* message, char* file, int line)
   *(int*)0 = 0;
 }
 
-#include "drawing_struct.h"
+#include "drawing.h"
 
 uint8_t*
 push_object(Arena* arena, size_t block_size) {
@@ -103,7 +104,7 @@ blit_device_buffer_to_x11_image(DeviceWindow* device_window, xcb_image_t* x11_im
     }
   }
 #else
-  // vertically flipped
+  // flip vertically
   for (int i = 0; i < device_window->height; ++i) {
     uint32_t* src_line = device_window->pixel_buffer + device_window->width*i;
     uint32_t* dest_line = (uint32_t*)x11_image->data + device_window->width*(device_window->height-1) - device_window->width*i;
@@ -166,7 +167,6 @@ main(int argc, char** argv) {
   xcb_pixmap_t pixmap = xcb_generate_id(connection);
   xcb_create_pixmap(connection, device_window.depth, pixmap, x11_window, x11_image->width, x11_image->height);
 
-  /* Create pixmap plot gc */
   mask = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND;
   values[0] = screen->black_pixel;
   values[1] = 0x00ffffff;
@@ -174,7 +174,6 @@ main(int argc, char** argv) {
   xcb_gcontext_t gc = xcb_generate_id (connection);
   xcb_create_gc(connection, gc, pixmap, mask, values);
 
-  /* Put the image into the pixmap */
   xcb_image_put(connection, pixmap, gc, x11_image, 0, 0, 0);
 
   /* Show the window */
@@ -182,7 +181,6 @@ main(int argc, char** argv) {
   xcb_flush(connection);
 
   draw(&device_window);
-  //draw_string(L"ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n~!@#$%^&*()_+-{}|:\"<>?`[]\\;',./", &drawing_surface);
   blit_device_buffer_to_x11_image(&device_window, x11_image);
 
   xcb_image_put(connection, pixmap, gc, x11_image, 0, 0, 0);

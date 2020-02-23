@@ -7,10 +7,12 @@ typedef struct {
       uint8_t R;
       uint8_t G;
       uint8_t B;
-      uint8_t X;
+      union {
+        uint8_t blackness;
+        uint8_t X;
+      };
     };
   };
-  uint8_t blackness;
 } RgbPixel;
 
 typedef struct {
@@ -28,7 +30,7 @@ typedef struct {
 typedef struct {
   Point lower_left;
   Point upper_right;
-} Rectangle;
+} MyRectangle;
 
 typedef struct {
   wchar_t character;
@@ -41,6 +43,8 @@ typedef struct {
 typedef struct Edge {
   float x_intercept;
   float m, b; // y = m*x + b
+  float delta_x;
+  float delta_y;
   union {
     struct {
       float x0;
@@ -57,16 +61,8 @@ typedef struct Edge {
     };
     Point end_point;
   };
-  union {
-    struct {
-      float delta_x;
-      float delta_y;
-    };
-    struct {
-      struct Edge* prev_edge;
-      struct Edge* next_edge;
-    };
-  };
+  struct Edge* prev_edge;
+  struct Edge* next_edge;
 } Edge;
 
 typedef struct {
@@ -80,7 +76,7 @@ typedef struct {
   int total_vertex_count;
   int n_contours;
   EdgeList* edge_list;
-} Polygon;
+} MyPolygon;
 
 typedef struct {
   uint8_t* memory;

@@ -6,6 +6,19 @@
 #define fabs(f) \
   ((f) > 0.f ? (f) : -(f))
 
+void*
+push_object(Arena* arena, size_t block_size) {
+  void* object = arena->avail;
+  arena->avail += block_size + 1*KILOBYTE;
+  return object;
+}
+
+#define push_struct(type) \
+  (type*) push_object(&arena, sizeof(type))
+
+#define push_array(type, count) \
+  (type*) push_object(&arena, sizeof(type)*(count))
+
 Vector3
 matrix3_row1(Matrix3* M) {
   Vector3 row = {};
@@ -433,9 +446,9 @@ new_empty_edge() {
   return result;
 }
 
-Polygon
+MyPolygon
 new_empty_polygon() {
-  Polygon result = {0};
+  MyPolygon result = {0};
   return result;
 }
 
@@ -446,7 +459,7 @@ new_empty_shape() {
 }
 
 void
-make_polygon(Polygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
+make_polygon(MyPolygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
   polygon->contour_vertex_count = push_array(int, shape->n_contours);
   polygon->n_contours = shape->n_contours;
   polygon->contours = push_array(Point*, shape->n_contours);
@@ -553,7 +566,7 @@ y_intercept_at(DrawingSurface* drawing_surface, int scanline_nr) {
 }
 
 void
-draw_polygon(Polygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* device_window) {
+draw_polygon(MyPolygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* device_window) {
   EdgeList edge_heap = {0};
   edge_heap.entries = push_array(Edge, polygon->total_vertex_count);
   edge_heap.count = 0;
@@ -793,9 +806,9 @@ ellipse(int center_x, int center_y, int radius_x, int radius_y) {
 }
 #endif/*--<*/
 
-Rectangle
+MyRectangle
 get_bounding_box(Shape* shape) {
-  Rectangle bb = {};
+  MyRectangle bb = {};
   Point* pt = shape->points;
   bb.lower_left = *pt;
   bb.upper_right = *pt;
@@ -996,11 +1009,11 @@ draw(DeviceWindow* device_window) {
   //wchar_t* string = L"abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"▌";
+  wchar_t* string = L"▐";
   int string_length = wcslen(string);
 
-  Rectangle* shape_bb = push_array(Rectangle, string_length);
-  Rectangle max_bb = {0};
+  MyRectangle* shape_bb = push_array(MyRectangle, string_length);
+  MyRectangle max_bb = {0};
   max_bb.lower_left.x = INT_MAX;
   max_bb.lower_left.y = INT_MAX;
   max_bb.upper_right.x = INT_MIN;
@@ -1091,7 +1104,7 @@ draw(DeviceWindow* device_window) {
     apply_xform(&clipped_shapes[i], &scale_window);
 
     if (clipped_shapes[i].total_point_count > 0) {
-      Polygon polygon = {0};
+      MyPolygon polygon = {0};
       make_polygon(&polygon, &clipped_shapes[i], &drawing_surface);
       draw_polygon(&polygon, &drawing_surface, device_window);
     }
