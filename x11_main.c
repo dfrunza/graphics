@@ -13,20 +13,6 @@
 #include <math.h>
 #include <wchar.h>
 
-#define local static
-#define global static
-#define internal static
-#define persistent static
-#define true 1u
-#define false 0u
-#define bool uint32_t
-#define KILOBYTE 1024
-#define MEGABYTE 1024*KILOBYTE
-#define PI 3.141592f
-#define FLOAT_EPSILON 0.000001
-
-#define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
-
 #define assert(EXPR) do { if(!(EXPR)) assert_(#EXPR, __FILE__, __LINE__); } while(0)
 void assert_(char* message, char* file, int line)
 {
@@ -41,19 +27,6 @@ void assert_(char* message, char* file, int line)
 
 #include "drawing.h"
 
-uint8_t*
-push_object(Arena* arena, size_t block_size) {
-  void* object = arena->avail;
-  arena->avail += block_size + 1*KILOBYTE;
-  return object;
-}
-
-#define push_struct(type) \
-  (type*) push_object(&arena, sizeof(type))
-
-#define push_array(type, count) \
-  (type*) push_object(&arena, sizeof(type)*(count))
-
 global Arena arena;
 
 global Color COLOR_RED = {.R=255, .G=0, .B=0};
@@ -63,9 +36,10 @@ global Color WHITE = {.R=255, .G=255, .B=255};
 global Color BLACK = {.R=0, .G=0, .B=0};
 
 #include "drawing.c"
+#include "x11_main.h"
 
 xcb_image_t*
-create_x11_image(xcb_connection_t* conn, DeviceWindow* device_window) {
+create_x11_image(xcb_connection_t* conn, X11DeviceWindow* device_window) {
   const xcb_setup_t* setup = xcb_get_setup(conn);
   xcb_format_t* fmt_at = xcb_setup_pixmap_formats(setup);
   xcb_format_t* fmt_end = fmt_at + xcb_setup_pixmap_formats_length(setup);
@@ -92,7 +66,7 @@ create_x11_image(xcb_connection_t* conn, DeviceWindow* device_window) {
 }
 
 void
-blit_device_buffer_to_x11_image(DeviceWindow* device_window, xcb_image_t* x11_image) {
+blit_device_buffer_to_x11_image(X11DeviceWindow* device_window, xcb_image_t* x11_image) {
 #if 0
   // verbatim
   for (int i = 0; i < image_height; ++i) {
@@ -137,7 +111,7 @@ main(int argc, char** argv) {
   xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
   //printf("root depth %d\n",screen->root_depth);
 
-  DeviceWindow device_window = {0};
+  X11DeviceWindow device_window = {0};
   device_window.width = 100;
   device_window.height = 100;
   device_window.bytes_per_pixel = 4;
@@ -180,7 +154,7 @@ main(int argc, char** argv) {
   xcb_map_window(connection, x11_window);
   xcb_flush(connection);
 
-  draw(&device_window);
+  draw((DeviceWindow*)&device_window);
   blit_device_buffer_to_x11_image(&device_window, x11_image);
 
   xcb_image_put(connection, pixmap, gc, x11_image, 0, 0, 0);

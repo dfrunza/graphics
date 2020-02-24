@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SRC_DIR=$PWD
-C_FLAGS="-std=gnu99 -ggdb -Winline -Wno-write-strings"
+C_FLAGS="-g -ggdb -std=gnu99 -Winline -Wno-write-strings -fms-extensions"
 L_FLAGS=""
 
 mkdir -p ./bin

@@ -1,5 +1,19 @@
 // -*- coding: utf-8 -*-
 
+#define local static
+#define global static
+#define internal static
+#define persistent static
+#define true 1u
+#define false 0u
+#define bool uint32_t
+#define KILOBYTE 1024
+#define MEGABYTE 1024*KILOBYTE
+#define PI 3.141592f
+#define FLOAT_EPSILON 0.000001
+
+#define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
+
 typedef struct {
   union {
     uint32_t bytes;
@@ -146,6 +160,5 @@ typedef struct {
   int height;
   int bytes_per_pixel;
   int bits_per_pixel;
-  int depth;
 } DeviceWindow;
 

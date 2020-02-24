@@ -14,19 +14,6 @@
 #include <wchar.h>
 #include <malloc.h>
 
-#define global static
-#define internal static
-#define persistent static
-#define true 1u
-#define false 0u
-#define bool uint32_t
-#define KILOBYTE 1024
-#define MEGABYTE 1024*KILOBYTE
-#define PI 3.141592f
-#define FLOAT_EPSILON 0.000001
-
-#define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
-
 #define assert(EXPR) do { if(!(EXPR)) assert_(#EXPR, __FILE__, __LINE__); } while(0)
 void assert_(char* message, char* file, int line)
 {
