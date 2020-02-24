@@ -951,6 +951,24 @@ Shape clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT], S
   }
 }
 
+#if 0
+void draw_test(WinDeviceWindow* device_window) {
+  int pitch = device_window->width*device_window->bytes_per_pixel;
+  uint8_t* row = (uint8_t*)device_window->framebuffer;
+  for (int y = 0; y < device_window->height; ++y) {
+    RgbPixel* pixel = (RgbPixel*)row;
+    for (int x = 0; x < device_window->width; ++x) {
+      pixel->R = 128;
+      pixel->G = 128;
+      pixel->B = 0;
+      pixel->X = 0;
+      ++pixel;
+    }
+    row += pitch;
+  }
+}
+#endif
+
 void draw(DeviceWindow* device_window) {
   DrawingSurface drawing_surface = {0};
   drawing_surface.x_pixel_count = device_window->width*3;

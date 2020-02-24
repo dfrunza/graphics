@@ -35,6 +35,12 @@ typedef struct {
   uint32_t B;
 } Color;
 
+global Color COLOR_RED = {.R=255, .G=0, .B=0};
+global Color COLOR_GREEN = {.R=255, .G=0, .B=0};
+global Color COLOR_BLUE = {.R=0, .G=0, .B=255};
+global Color WHITE = {.R=255, .G=255, .B=255};
+global Color BLACK = {.R=0, .G=0, .B=0};
+
 typedef struct {
   float x;
   float y;

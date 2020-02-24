@@ -1,9 +1,8 @@
 // -*- coding: utf-8 -*-
 
-#define UNICODE
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <tchar.h>
+//#include <tchar.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -32,24 +31,6 @@ global Arena arena;
 
 #include "drawing.c"
 #include "win_main.h"
-
-#if 0
-void draw_test(WinDeviceWindow* device_window) {
-  int pitch = device_window->width*device_window->bytes_per_pixel;
-  uint8_t* row = (uint8_t*)device_window->pixel_buffer;
-  for (int y = 0; y < device_window->height; ++y) {
-    RgbPixel* pixel = (RgbPixel*)row;
-    for (int x = 0; x < device_window->width; ++x) {
-      pixel->R = 128;
-      pixel->G = 128;
-      pixel->B = 0;
-      pixel->X = 0;
-      ++pixel;
-    }
-    row += pitch;
-  }
-}
-#endif
 
 LRESULT CALLBACK winproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
   persistent WinDeviceWindow* device_window = 0;
@@ -97,7 +78,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   }
   arena.avail = arena.memory;
 
-  wchar_t* program_name = L"Drawing";
+  char* title = "Drawing";
   WNDCLASSEX winclass = {};
   winclass.cbSize = sizeof(WNDCLASSEX);
   winclass.style = CS_DBLCLKS;
@@ -106,7 +87,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   winclass.hIcon = LoadIcon(0, IDI_WINLOGO);
   winclass.hCursor = LoadCursor(0, IDC_ARROW);
   winclass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-  winclass.lpszClassName = program_name;
+  winclass.lpszClassName = title;
 
   if (!RegisterClassEx(&winclass)) {
     printf("ERROR\n");
@@ -122,7 +103,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   device_window.framebuffer_size_bytes = device_window.backbuffer_size_pixels*device_window.bytes_per_pixel;
 
   DWORD window_style = WS_OVERLAPPEDWINDOW;
-  HWND hwnd = CreateWindow(program_name, program_name, window_style,
+  HWND hwnd = CreateWindow(title, title, window_style,
                            0, 0, device_window.width, device_window.height,
                            0, 0, hinstance, &device_window);
   RECT window_rect = {};

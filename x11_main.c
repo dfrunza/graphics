@@ -29,12 +29,6 @@ void assert_(char* message, char* file, int line)
 
 global Arena arena;
 
-global Color COLOR_RED = {.R=255, .G=0, .B=0};
-global Color COLOR_GREEN = {.R=255, .G=0, .B=0};
-global Color COLOR_BLUE = {.R=0, .G=0, .B=255};
-global Color WHITE = {.R=255, .G=255, .B=255};
-global Color BLACK = {.R=0, .G=0, .B=0};
-
 #include "drawing.c"
 #include "x11_main.h"
 
@@ -121,7 +115,7 @@ main(int argc, char** argv) {
   values[0] = screen->black_pixel;
   values[1] = 0x00ffffff;
 
-  xcb_gcontext_t gc = xcb_generate_id (connection);
+  xcb_gcontext_t gc = xcb_generate_id(connection);
   xcb_create_gc(connection, gc, pixmap, mask, values);
 
   xcb_image_put(connection, pixmap, gc, x11_image, 0, 0, 0);
@@ -137,31 +131,33 @@ main(int argc, char** argv) {
   xcb_copy_area(connection, pixmap, x11_window, gc, 0, 0, 0, 0, x11_image->width, x11_image->height);
   xcb_flush(connection);
 
-  xcb_generic_event_t* e;
-  int is_running = true;
-  while (is_running && (e = xcb_wait_for_event(connection))) {
-    switch (e->response_type) {
-      case XCB_EXPOSE: {
-        xcb_expose_event_t* ee = (xcb_expose_event_t*)e;
-        //printf("expose %d,%d - %d,%d\n", ee->x, ee->y, ee->width, ee->height);
-        xcb_copy_area(connection, pixmap, x11_window, gc,
-                      ee->x, ee->y, ee->x, ee->y, ee->width, ee->height);
-        xcb_flush(connection);
-        break;
+  bool is_running = true;
+  while (is_running) {
+    xcb_generic_event_t* e = 0;
+    if (e = xcb_wait_for_event(connection)) {
+      switch (e->response_type) {
+        case XCB_EXPOSE: {
+          xcb_expose_event_t* ee = (xcb_expose_event_t*)e;
+          //printf("expose %d,%d - %d,%d\n", ee->x, ee->y, ee->width, ee->height);
+          xcb_copy_area(connection, pixmap, x11_window, gc,
+                        ee->x, ee->y, ee->x, ee->y, ee->width, ee->height);
+          xcb_flush(connection);
+          break;
+        }
+
+        case XCB_KEY_PRESS:
+          is_running = false;
+          break;
+
+        case XCB_BUTTON_PRESS:
+          break;
       }
-
-      case XCB_KEY_PRESS:
-        is_running = false;
-        break;
-
-      case XCB_BUTTON_PRESS:
-        break;
+      free(e);
     }
-    free(e);
   }
 
   xcb_free_pixmap(connection, pixmap);
-  xcb_disconnect (connection);
+  xcb_disconnect(connection);
 
   return 0;
 }
