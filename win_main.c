@@ -51,18 +51,6 @@ void draw_test(WinDeviceWindow* device_window) {
 }
 #endif
 
-void blit_device_buffer_to_screen(WinDeviceWindow* device_window) {
-  // flip vertically
-  for (int i = 0; i < device_window->height; ++i) {
-    uint32_t* src_line = device_window->pixel_buffer + device_window->width*i;
-    uint32_t* dest_line = (uint32_t*)device_window->framebuffer + device_window->width*(device_window->height-1) - device_window->width*i;
-    for (int j = 0; j < device_window->width; ++j) {
-      uint32_t p = src_line[j];
-      dest_line[j] = p;
-    }
-  }
-}
-
 LRESULT CALLBACK winproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
   persistent WinDeviceWindow* device_window = 0;
   LRESULT result = 0;
@@ -130,6 +118,8 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   device_window.height = 100;
   device_window.bytes_per_pixel = 4;
   device_window.bits_per_pixel = device_window.bytes_per_pixel*8;
+  device_window.backbuffer_size_pixels = device_window.width*device_window.height;
+  device_window.framebuffer_size_bytes = device_window.backbuffer_size_pixels*device_window.bytes_per_pixel;
 
   DWORD window_style = WS_OVERLAPPEDWINDOW;
   HWND hwnd = CreateWindow(program_name, program_name, window_style,
@@ -146,6 +136,8 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   adjusted_window_rect.bottom = window_rect.bottom + (device_window.height - client_rect.bottom);
   SetWindowPos(hwnd, 0, adjusted_window_rect.left, adjusted_window_rect.top, adjusted_window_rect.right, adjusted_window_rect.bottom, 0);
 
+  device_window.pixel_buffer = push_array(uint32_t, device_window.width*device_window.height);
+
   BITMAPINFO* bmi = &device_window.bitmap_info;
   bmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
   bmi->bmiHeader.biWidth = device_window.width;
@@ -154,12 +146,10 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   bmi->bmiHeader.biBitCount = device_window.bits_per_pixel;
   bmi->bmiHeader.biCompression = BI_RGB;
   bmi->bmiHeader.biSizeImage = 0;  /* May be set to 0 for BI_RGB bitmaps */
-
-  device_window.pixel_buffer = push_array(uint32_t, device_window.width*device_window.height);
-  device_window.framebuffer = push_array(uint32_t, device_window.width*device_window.height);
+  device_window.framebuffer = push_array(uint8_t, device_window.framebuffer_size_bytes);
 
   draw((DeviceWindow*)&device_window);
-  blit_device_buffer_to_screen(&device_window);
+  copy_backbuffer_to_framebuffer((DeviceWindow*)&device_window);
 
   ShowWindow(hwnd, cmd_show);
   UpdateWindow(hwnd);

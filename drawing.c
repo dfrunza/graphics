@@ -6,8 +6,7 @@
 #define fabs(f) \
   ((f) > 0.f ? (f) : -(f))
 
-void*
-push_object(Arena* arena, size_t block_size) {
+void* push_object(Arena* arena, size_t block_size) {
   void* object = arena->avail;
   arena->avail += block_size + 1*KILOBYTE;
   return object;
@@ -19,8 +18,7 @@ push_object(Arena* arena, size_t block_size) {
 #define push_array(type, count) \
   (type*) push_object(&arena, sizeof(type)*(count))
 
-Vector3
-matrix3_row1(Matrix3* M) {
+Vector3 matrix3_row1(Matrix3* M) {
   Vector3 row = {};
   row.x = M->x1;
   row.y = M->x2;
@@ -28,8 +26,7 @@ matrix3_row1(Matrix3* M) {
   return row;
 }
 
-Vector3
-matrix3_row2(Matrix3* M) {
+Vector3 matrix3_row2(Matrix3* M) {
   Vector3 row = {};
   row.x = M->y1;
   row.y = M->y2;
@@ -37,8 +34,7 @@ matrix3_row2(Matrix3* M) {
   return row;
 }
 
-Vector3
-matrix3_row3(Matrix3* M) {
+Vector3 matrix3_row3(Matrix3* M) {
   Vector3 row = {};
   row.x = M->z1;
   row.y = M->z2;
@@ -46,13 +42,11 @@ matrix3_row3(Matrix3* M) {
   return row;
 }
 
-float
-vector3_dot_product(Vector3* A, Vector3* B) {
+float vector3_dot_product(Vector3* A, Vector3* B) {
   return A->x*B->x + A->y*B->y + A->z*B->z;
 }
 
-Vector3
-vector3_mul_matrix3(Vector3* V, Matrix3* M) {
+Vector3 vector3_mul_matrix3(Vector3* V, Matrix3* M) {
   Vector3 result = {};
 
   Vector3 row_M = matrix3_row1(M);
@@ -65,8 +59,7 @@ vector3_mul_matrix3(Vector3* V, Matrix3* M) {
   return result;
 }
 
-Matrix3
-matrix3_mul(Matrix3* A, Matrix3* B) {
+Matrix3 matrix3_mul(Matrix3* A, Matrix3* B) {
   Matrix3 result = {0};
 
   Vector3 row_A = matrix3_row1(A);
@@ -87,8 +80,7 @@ matrix3_mul(Matrix3* A, Matrix3* B) {
   return result;
 }
 
-void
-apply_xform(Shape* shape, Matrix3* T) {
+void apply_xform(Shape* shape, Matrix3* T) {
   Point* pt = shape->points;
   for (int i = 0; i < shape->n_contours; ++i) {
     for (int j = 0; j < shape->contours[i]; ++j) {
@@ -98,8 +90,7 @@ apply_xform(Shape* shape, Matrix3* T) {
   }
 }
 
-void
-mk_translate_matrix(Matrix3* T, float t_x, float t_y) {
+void mk_translate_matrix(Matrix3* T, float t_x, float t_y) {
   Vector3* col = &T->col1;
   col->x = 1.f;
   col->y = 0.f;
@@ -116,8 +107,7 @@ mk_translate_matrix(Matrix3* T, float t_x, float t_y) {
   col->z = 1.f;
 }
 
-void
-mk_rotate_matrix(Matrix3* T, float rotation_angle) {
+void mk_rotate_matrix(Matrix3* T, float rotation_angle) {
   float sin_phi = sinf(rotation_angle);
   float cos_phi = cosf(rotation_angle);
 
@@ -137,8 +127,7 @@ mk_rotate_matrix(Matrix3* T, float rotation_angle) {
   col->z = 1.f;
 }
 
-void
-mk_pivot_rotate_matrix(Matrix3* T, float rotation_angle, Point* pivot_pt) {
+void mk_pivot_rotate_matrix(Matrix3* T, float rotation_angle, Point* pivot_pt) {
   float sin_phi = sinf(rotation_angle);
   float cos_phi = cosf(rotation_angle);
 
@@ -158,8 +147,7 @@ mk_pivot_rotate_matrix(Matrix3* T, float rotation_angle, Point* pivot_pt) {
   col->z = 1.f;
 }
 
-void
-mk_scale_matrix(Matrix3* T, float s_x, float s_y) {
+void mk_scale_matrix(Matrix3* T, float s_x, float s_y) {
   Vector3* col = &T->col1;
   col->x = s_x;
   col->y = 0.f;
@@ -176,8 +164,7 @@ mk_scale_matrix(Matrix3* T, float s_x, float s_y) {
   col->z = 1.f;
 }
 
-void
-mk_pivot_scale_matrix(Matrix3* T, float s_x, float s_y, Point* pivot_pt) {
+void mk_pivot_scale_matrix(Matrix3* T, float s_x, float s_y, Point* pivot_pt) {
   Vector3* col = &T->col1;
   col->x = s_x;
   col->y = 0.f;
@@ -194,8 +181,7 @@ mk_pivot_scale_matrix(Matrix3* T, float s_x, float s_y, Point* pivot_pt) {
   col->z = 1.f;
 }
 
-void
-mk_flip_vertical_matrix(Matrix3* T) {
+void mk_flip_vertical_matrix(Matrix3* T) {
   Vector3* col = &T->col1;
   col->x = 1.f;
   col->y = 0.f;
@@ -212,20 +198,29 @@ mk_flip_vertical_matrix(Matrix3* T) {
   col->z = 1.f;
 }
 
-uint32_t
-make_grayscale_rgb32(uint8_t blackness) {
+uint32_t make_grayscale_rgb32(uint8_t blackness) {
   uint32_t value = blackness;
   return value | value << 8 | value << 16;
 }
 
-uint32_t*
-get_device_window_pixel_at(DeviceWindow* device_window, int x, int y) {
-  uint32_t* result = device_window->pixel_buffer + device_window->width*y + x;
+void copy_backbuffer_to_framebuffer(DeviceWindow* device_window) {
+  // flip vertically
+  for (int i = 0; i < device_window->height; ++i) {
+    uint32_t* src_line = device_window->backbuffer + device_window->width*i;
+    uint32_t* dest_line = (uint32_t*)device_window->framebuffer + device_window->width*(device_window->height-1) - device_window->width*i;
+    for (int j = 0; j < device_window->width; ++j) {
+      uint32_t p = src_line[j];
+      dest_line[j] = p;
+    }
+  }
+}
+
+uint32_t* get_device_window_pixel_at(DeviceWindow* device_window, int x, int y) {
+  uint32_t* result = device_window->backbuffer + device_window->width*y + x;
   return result;
 }
 
-void
-increase_pixel_blackness(DeviceWindow* device_window, int x, int y, int blackness) {
+void increase_pixel_blackness(DeviceWindow* device_window, int x, int y, int blackness) {
   RgbPixel* pixel = (RgbPixel*)get_device_window_pixel_at(device_window, x, y);
 
   int new_blackness = pixel->X + blackness;
@@ -238,20 +233,17 @@ increase_pixel_blackness(DeviceWindow* device_window, int x, int y, int blacknes
   pixel->B = 255 - pixel->X;
 }
 
-void
-draw_pixel_black(DeviceWindow* device_window, int x, int y) {
+void draw_pixel_black(DeviceWindow* device_window, int x, int y) {
   uint32_t* p = get_device_window_pixel_at(device_window, x, y);
   *p = make_grayscale_rgb32(0);
 }
 
-void
-draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t blackness) {
+void draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t blackness) {
   uint32_t* p = get_device_window_pixel_at(device_window, x, y);
   *p = make_grayscale_rgb32(blackness);
 }
 
-void
-print_shape_points(Shape* shape) {
+void print_shape_points(Shape* shape) {
   for (int i = 0; i < shape->total_point_count; ++i) {
     Point* p = &shape->points[i];
     printf("(%.4f, %.4f) ", p->x, p->y);
@@ -259,8 +251,7 @@ print_shape_points(Shape* shape) {
   printf("\n");
 }
 
-void
-print_edge_list(EdgeList* edge_list) {
+void print_edge_list(EdgeList* edge_list) {
   Edge* edge = &edge_list->entries[0];
   for (int i = 0; i < edge_list->count; ++i) {
     printf("((x0=%.4f, y0=%.4f), (x1=%.4f,y1=%.4f), x_intercept=%.4f)\n",
@@ -270,38 +261,32 @@ print_edge_list(EdgeList* edge_list) {
   printf("\n");
 }
 
-int
-truncate_float(float f) {
+int truncate_float(float f) {
   int result = (int)f;
   return result;
 }
 
-bool
-float_is_zero(float a) {
+bool float_is_zero(float a) {
   bool result = fabs(a) <= FLOAT_EPSILON;
   return result;
 }
 
-bool
-float_is_equal(float a, float b) {
+bool float_is_equal(float a, float b) {
   bool result = fabs(a - b) <= FLOAT_EPSILON;
   return result;
 }
 
-float
-drawing_surface_to_device_window_y_value(DrawingSurface* drawing_surface, float y) {
+float drawing_surface_to_device_window_y_value(DrawingSurface* drawing_surface, float y) {
   float result = (y - drawing_surface->y_min) / drawing_surface->pixel_height;
   return result;
 }
 
-float
-drawing_surface_to_device_window_x_value(DrawingSurface* drawing_surface, float x) {
+float drawing_surface_to_device_window_x_value(DrawingSurface* drawing_surface, float x) {
   float result = (x - drawing_surface->x_min) / drawing_surface->pixel_width;
   return result;
 }
 
-void
-set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device_window, float x, float y) {
+void set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device_window, float x, float y) {
   int pixel_y = round((y - drawing_surface->y_min)/drawing_surface->pixel_height);
   assert(pixel_y >= 0 && pixel_y < drawing_surface->y_pixel_count);
   int pixel_x = round((x - drawing_surface->x_min)/drawing_surface->pixel_width);
@@ -325,13 +310,11 @@ set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device
   increase_pixel_blackness(device_window, device_pixel_x, device_pixel_y, pixel_blackness);
 }
 
-bool
-compare_edge_is_less(Edge* edge_A, Edge* edge_B) {
+bool compare_edge_is_less(Edge* edge_A, Edge* edge_B) {
   return edge_A->y0 < edge_B->y0;
 }
 
-Edge
-pop_polygon_edge(EdgeList* heap) {
+Edge pop_polygon_edge(EdgeList* heap) {
   assert(heap->count > 0);
   Edge next_edge = heap->entries[1];
   heap->entries[1] = heap->entries[heap->count--];
@@ -358,8 +341,7 @@ pop_polygon_edge(EdgeList* heap) {
   return next_edge;
 }
 
-void
-add_polygon_edge(EdgeList* heap, Edge* edge) {
+void add_polygon_edge(EdgeList* heap, Edge* edge) {
   heap->entries[++heap->count] = *edge;
   int pos = heap->count;
   while (pos > 1) {
@@ -375,8 +357,7 @@ add_polygon_edge(EdgeList* heap, Edge* edge) {
   }
 }
 
-void
-insert_active_edge(EdgeList* list, Edge* edge) {
+void insert_active_edge(EdgeList* list, Edge* edge) {
   int i = 0;
   for (; i < list->count; ++i) {
     if (edge->x_intercept < list->entries[i].x_intercept) {
@@ -393,8 +374,7 @@ insert_active_edge(EdgeList* list, Edge* edge) {
   }
 }
 
-void
-remove_active_edge(EdgeList* list, Edge* edge, int i) {
+void remove_active_edge(EdgeList* list, Edge* edge, int i) {
   assert(i < list->count);
   for (int j = i; j < list->count; ++j) {
     list->entries[j] = list->entries[j+1];
@@ -402,8 +382,7 @@ remove_active_edge(EdgeList* list, Edge* edge, int i) {
   --list->count;
 }
 
-void
-sort_active_edge_list(EdgeList* list) {
+void sort_active_edge_list(EdgeList* list) {
   for (int i = 0; i < list->count; ++i) {
     for (int j = i;
          list->entries[j].x_intercept < list->entries[j-1].x_intercept;
@@ -428,38 +407,32 @@ Shape* find_shape(wchar_t character) {
   return result;
 }
 
-Point
-new_empty_point() {
+Point new_empty_point() {
   Point result = {0};
   return result;
 }
 
-EdgeList
-new_empty_edge_list() {
+EdgeList new_empty_edge_list() {
   EdgeList result = {0};
   return result;
 }
 
-Edge
-new_empty_edge() {
+Edge new_empty_edge() {
   Edge result = {0};
   return result;
 }
 
-MyPolygon
-new_empty_polygon() {
+MyPolygon new_empty_polygon() {
   MyPolygon result = {0};
   return result;
 }
 
-Shape
-new_empty_shape() {
+Shape new_empty_shape() {
   Shape result = {0};
   return result;
 }
 
-void
-make_polygon(MyPolygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
+void make_polygon(MyPolygon* polygon, Shape* shape, DrawingSurface* drawing_surface) {
   polygon->contour_vertex_count = push_array(int, shape->n_contours);
   polygon->n_contours = shape->n_contours;
   polygon->contours = push_array(Point*, shape->n_contours);
@@ -553,20 +526,17 @@ make_polygon(MyPolygon* polygon, Shape* shape, DrawingSurface* drawing_surface) 
   polygon->edge_list = edge_list;
 }
 
-Matrix3
-new_empty_matrix3() {
+Matrix3 new_empty_matrix3() {
   Matrix3 result = {0};
   return result;
 }
 
-float
-y_intercept_at(DrawingSurface* drawing_surface, int scanline_nr) {
+float y_intercept_at(DrawingSurface* drawing_surface, int scanline_nr) {
   float result = drawing_surface->y_min + (drawing_surface->pixel_height * (float)scanline_nr);
   return result;
 }
 
-void
-draw_polygon(MyPolygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* device_window) {
+void draw_polygon(MyPolygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* device_window) {
   EdgeList edge_heap = {0};
   edge_heap.entries = push_array(Edge, polygon->total_vertex_count);
   edge_heap.count = 0;
@@ -656,10 +626,9 @@ draw_polygon(MyPolygon* polygon, DrawingSurface* drawing_surface, DeviceWindow* 
 }
 
 
-void
-clear_device_window(DeviceWindow* device_window, uint8_t blackness) {
+void clear_device_window(DeviceWindow* device_window, uint8_t blackness) {
   int i, j;
-  uint32_t* p = device_window->pixel_buffer;
+  uint32_t* p = device_window->backbuffer;
   for (int j = 0; j < device_window->height; ++j) {
     for (int i = 0; i < device_window->width; ++i) {
       *p++ = make_grayscale_rgb32(blackness);
@@ -806,8 +775,7 @@ ellipse(int center_x, int center_y, int radius_x, int radius_y) {
 }
 #endif/*--<*/
 
-MyRectangle
-get_bounding_box(Shape* shape) {
+MyRectangle get_bounding_box(Shape* shape) {
   MyRectangle bb = {};
   Point* pt = shape->points;
   bb.lower_left = *pt;
@@ -833,24 +801,21 @@ get_bounding_box(Shape* shape) {
   return bb;
 }
 
-void
-vertical_line_intersection(Point* p0, Point* p1, Point* result, int x) {
+void vertical_line_intersection(Point* p0, Point* p1, Point* result, int x) {
   assert(!float_is_equal(p1->x, p0->x));
   float m = (p1->y - p0->y)/(float)(p1->x - p0->x);
   result->y = p1->y + m*(x - p1->x);
   result->x = x;
 }
 
-void
-horizontal_line_intersection(Point* p0, Point* p1, Point* result, int y) {
+void horizontal_line_intersection(Point* p0, Point* p1, Point* result, int y) {
   assert(!float_is_equal(p1->y, p0->y));
   float m = (p1->y - p0->y)/(float)(p1->x - p0->x);
   result->x = p1->x + (y - p1->y)/m;
   result->y = y;
 }
 
-bool
-does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
+bool does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   bool result = false;
   if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
     int x = clipping_boundary[clipping_edge];
@@ -870,8 +835,7 @@ does_intersect_clipping_edge(Point* p0, Point* p1, ClippingEdge clipping_edge, f
   return result;
 }
 
-void
-get_clip_edge_intersection(Point* r, Point* v, Point* result,
+void get_clip_edge_intersection(Point* r, Point* v, Point* result,
                            ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   if (clipping_edge == ClipEdge_Left || clipping_edge == ClipEdge_Right) {
     vertical_line_intersection(r, v, result, clipping_boundary[clipping_edge]);
@@ -881,8 +845,7 @@ get_clip_edge_intersection(Point* r, Point* v, Point* result,
   }
 }
 
-bool
-is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
+bool is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, float clipping_boundary[static ClipEdge_COUNT]) {
   bool result = false;
   if (clipping_edge == ClipEdge_Left) {
     if (v->x >= clipping_boundary[ClipEdge_Left]) {
@@ -910,10 +873,9 @@ is_point_inside_clip_boundary(Point* v, ClippingEdge clipping_edge, float clippi
   return result;
 }
 
-void
-do_clip_point(Point* v, ClippingEdge clipping_edge, Point* first_clipped[static ClipEdge_COUNT],
-              Point* recently_clipped[static ClipEdge_COUNT], float clipping_boundary[static ClipEdge_COUNT],
-              Point* clipped_contour, int* clipped_vertex_count) {
+void do_clip_point(Point* v, ClippingEdge clipping_edge, Point* first_clipped[static ClipEdge_COUNT],
+                   Point* recently_clipped[static ClipEdge_COUNT], float clipping_boundary[static ClipEdge_COUNT],
+                   Point* clipped_contour, int* clipped_vertex_count) {
   if (!first_clipped[clipping_edge]) {
     first_clipped[clipping_edge] = v;
   }
@@ -947,9 +909,7 @@ do_clip_point(Point* v, ClippingEdge clipping_edge, Point* first_clipped[static 
   }
 }
 
-Shape
-clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT],
-           Shape* clipped_shape) {
+Shape clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT], Shape* clipped_shape) {
   clipped_shape->n_contours = shape->n_contours;
   clipped_shape->contours = push_array(int, shape->n_contours);
   clipped_shape->points = push_array(Point, shape->total_point_count*2);
@@ -991,8 +951,7 @@ clip_shape(Shape* shape, float clipping_boundary[static ClipEdge_COUNT],
   }
 }
 
-void
-draw(DeviceWindow* device_window) {
+void draw(DeviceWindow* device_window) {
   DrawingSurface drawing_surface = {0};
   drawing_surface.x_pixel_count = device_window->width*3;
   drawing_surface.y_pixel_count = device_window->height*3;

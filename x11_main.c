@@ -39,55 +39,29 @@ global Color BLACK = {.R=0, .G=0, .B=0};
 #include "x11_main.h"
 
 xcb_image_t*
-create_x11_image(xcb_connection_t* conn, X11DeviceWindow* device_window) {
+create_x11_framebuffer(xcb_connection_t* conn, X11DeviceWindow* device_window) {
   const xcb_setup_t* setup = xcb_get_setup(conn);
-  xcb_format_t* fmt_at = xcb_setup_pixmap_formats(setup);
-  xcb_format_t* fmt_end = fmt_at + xcb_setup_pixmap_formats_length(setup);
-  xcb_format_t* fmt = 0;
-  for(; fmt_at != fmt_end; ++fmt_at) {
-    if((fmt_at->depth == device_window->depth) && (fmt_at->bits_per_pixel == device_window->bits_per_pixel)) {
-      //printf("fmt %p has pad %d depth %d, bpp %d\n", fmt_at, fmt_at->scanline_pad, device_window->depth, device_window->bits_per_pixel);
-      fmt = fmt_at;
+  xcb_format_t* format_at = xcb_setup_pixmap_formats(setup);
+  xcb_format_t* format_end = format_at + xcb_setup_pixmap_formats_length(setup);
+  xcb_format_t* format = 0;
+  for(; format_at != format_end; ++format_at) {
+    if((format_at->depth == device_window->depth) && (format_at->bits_per_pixel == device_window->bits_per_pixel)) {
+      //printf("format %p has pad %d depth %d, bpp %d\n", format_at, format_at->scanline_pad, device_window->depth, device_window->bits_per_pixel);
+      format = format_at;
       break;
     }
   }
 
-  if (fmt == 0) {
+  if (!format) {
     return 0;
   }
 
-  int image_size_bytes = device_window->width * device_window->height * device_window->bytes_per_pixel;
-  uint8_t* image_bytes = push_array(uint8_t, image_size_bytes);
+  device_window->framebuffer = push_array(uint8_t, device_window->framebuffer_size_bytes);
   xcb_image_t* result = xcb_image_create(device_window->width, device_window->height, XCB_IMAGE_FORMAT_Z_PIXMAP,
-                                         fmt->scanline_pad, fmt->depth, fmt->bits_per_pixel,
+                                         format->scanline_pad, format->depth, format->bits_per_pixel,
                                          0, setup->image_byte_order, XCB_IMAGE_ORDER_LSB_FIRST,
-                                         image_bytes, image_size_bytes, image_bytes);
+                                         device_window->framebuffer, device_window->framebuffer_size_bytes, device_window->framebuffer);
   return result;
-}
-
-void
-blit_device_buffer_to_x11_image(X11DeviceWindow* device_window, xcb_image_t* x11_image) {
-#if 0
-  // verbatim
-  for (int i = 0; i < image_height; ++i) {
-    uint32_t* src_line = image_buffer + image_width*i;
-    uint32_t* dest_line = (uint32_t*)image->data + image_width*i;
-    for (int j = 0; j < image_width; ++j) {
-      uint32_t p = src_line[j];
-      dest_line[j] = p;
-    }
-  }
-#else
-  // flip vertically
-  for (int i = 0; i < device_window->height; ++i) {
-    uint32_t* src_line = device_window->pixel_buffer + device_window->width*i;
-    uint32_t* dest_line = (uint32_t*)x11_image->data + device_window->width*(device_window->height-1) - device_window->width*i;
-    for (int j = 0; j < device_window->width; ++j) {
-      uint32_t p = src_line[j];
-      dest_line[j] = p;
-    }
-  }
-#endif
 }
 
 int
@@ -111,20 +85,22 @@ main(int argc, char** argv) {
   xcb_screen_t* screen = xcb_setup_roots_iterator(setup).data;
   //printf("root depth %d\n",screen->root_depth);
 
-  X11DeviceWindow device_window = {0};
+  X11DeviceWindow device_window = {};
   device_window.width = 100;
   device_window.height = 100;
   device_window.bytes_per_pixel = 4;
   device_window.bits_per_pixel = device_window.bytes_per_pixel*8;
+  device_window.backbuffer_size_pixels = device_window.width*device_window.height;
+  device_window.framebuffer_size_bytes = device_window.backbuffer_size_pixels*device_window.bytes_per_pixel;
   device_window.depth = 24; // FIXME: What is this and why should it be equal to 24?
 
-  xcb_image_t* x11_image = create_x11_image(connection, &device_window);
+  device_window.backbuffer = push_array(uint32_t, device_window.width * device_window.height);
+  xcb_image_t* x11_image = create_x11_framebuffer(connection, &device_window);
   if (x11_image == 0) {
     printf("ERROR\n");
     xcb_disconnect(connection);
     return 1;
   }
-  device_window.pixel_buffer = push_array(uint32_t, device_window.width * device_window.height);
 
   uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
   values[0] = screen->white_pixel;
@@ -155,15 +131,15 @@ main(int argc, char** argv) {
   xcb_flush(connection);
 
   draw((DeviceWindow*)&device_window);
-  blit_device_buffer_to_x11_image(&device_window, x11_image);
+  copy_backbuffer_to_framebuffer((DeviceWindow*)&device_window);
 
   xcb_image_put(connection, pixmap, gc, x11_image, 0, 0, 0);
   xcb_copy_area(connection, pixmap, x11_window, gc, 0, 0, 0, 0, x11_image->width, x11_image->height);
   xcb_flush(connection);
 
   xcb_generic_event_t* e;
-  int done = false;
-  while (!done && (e = xcb_wait_for_event(connection))) {
+  int is_running = true;
+  while (is_running && (e = xcb_wait_for_event(connection))) {
     switch (e->response_type) {
       case XCB_EXPOSE: {
         xcb_expose_event_t* ee = (xcb_expose_event_t*)e;
@@ -175,7 +151,7 @@ main(int argc, char** argv) {
       }
 
       case XCB_KEY_PRESS:
-        done = true;
+        is_running = false;
         break;
 
       case XCB_BUTTON_PRESS:

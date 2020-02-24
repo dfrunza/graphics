@@ -155,7 +155,10 @@ typedef struct {
 } ViewWindow;
 
 typedef struct {
-  uint32_t* pixel_buffer;
+  uint32_t* backbuffer;
+  void* framebuffer;
+  int framebuffer_size_bytes;
+  int backbuffer_size_pixels;
   int width;
   int height;
   int bytes_per_pixel;
