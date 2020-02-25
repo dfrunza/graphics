@@ -394,7 +394,7 @@ void sort_active_edge_list(EdgeList* list) {
   }
 }
 
-#include "genshape/shape_data.c"
+#include "shape_data.c"
 
 Shape* find_shape(wchar_t character) {
   Shape* result = 0;

@@ -20,7 +20,7 @@ c_source_file = open("shape_data.c", "w", encoding="utf-8")
 c_source_file.write("// -*- coding: utf-8 -*-\n\n")
 c_source_file.write("#define FONT_NAME L\"%s\"\n\n" % FONT_NAME)
 
-face = Face("ttf/%s.ttf" % FONT_NAME)
+face = Face("genshape/ttf/%s.ttf" % FONT_NAME)
 face.set_char_size(1, 1, 72, 72)
 print("%s.units_per_EM=%s" % (FONT_NAME, face.units_per_EM))
 
