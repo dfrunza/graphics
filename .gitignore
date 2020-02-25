@@ -2,3 +2,4 @@
 .idea/
 /bin/
 /font_shapes.c
+_build.sh
