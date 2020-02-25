@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import math
 from freetype import Face, \
-       FT_LOAD_DEFAULT, FT_LOAD_NO_BITMAP
+       FT_LOAD_NO_HINTING, FT_LOAD_NO_BITMAP
 
 # sudo -H pip3 install freetype-py fonttools numpy
 
@@ -17,18 +16,18 @@ def escape_character(character):
     return "\\" + character
   return character
 
-c_source_file = open("font_shapes.c", "w", encoding="utf-8")
+c_source_file = open("shape_data.c", "w", encoding="utf-8")
 c_source_file.write("// -*- coding: utf-8 -*-\n\n")
 c_source_file.write("#define FONT_NAME L\"%s\"\n\n" % FONT_NAME)
 
-face = Face("fonts/%s.ttf" % FONT_NAME)
+face = Face("ttf/%s.ttf" % FONT_NAME)
 face.set_char_size(1, 1, 72, 72)
 print("%s.units_per_EM=%s" % (FONT_NAME, face.units_per_EM))
 
 shape_id = 0
 for character in CHAR_LIST:
   c_source_file.write("//  '%s'\n" % character)
-  face.load_char(character, FT_LOAD_DEFAULT|FT_LOAD_NO_BITMAP)
+  face.load_char(character, FT_LOAD_NO_HINTING|FT_LOAD_NO_BITMAP)
   outline = face.glyph.outline
 
   s_contour_counts = ""
@@ -64,5 +63,5 @@ for shape_id in range(0, len(CHAR_LIST)):
   s_font_data += "\t.points=shape_%d_points,\n" % shape_id
   s_font_data += "\t.total_point_count=shape_%d_total_point_count,\n" % shape_id
   s_font_data += "\t}, \n"
-c_source_file.write("Shape font_shapes[] = {\n%s};\n" % s_font_data)
+c_source_file.write("Shape shape_data[] = {\n%s};\n" % s_font_data)
 

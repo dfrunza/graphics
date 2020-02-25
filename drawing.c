@@ -394,13 +394,13 @@ void sort_active_edge_list(EdgeList* list) {
   }
 }
 
-#include "font_shapes.c"
+#include "genshape/shape_data.c"
 
 Shape* find_shape(wchar_t character) {
   Shape* result = 0;
-  for (int i = 0; i < sizeof_array(font_shapes); ++i) {
-    if (font_shapes[i].character == character) {
-      result = &font_shapes[i];
+  for (int i = 0; i < sizeof_array(shape_data); ++i) {
+    if (shape_data[i].character == character) {
+      result = &shape_data[i];
       break;
     }
   }
