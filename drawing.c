@@ -1060,7 +1060,7 @@ void draw(DeviceWindow* device_window) {
 
   for (int i = 0; i < string_length; ++i) {
     Matrix3 horizontal_align_xform = {0};
-    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 0);
+    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 0+4);
     apply_xform(&shapes[i], &horizontal_align_xform);
   }
 
