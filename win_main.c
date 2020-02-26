@@ -117,7 +117,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   adjusted_window_rect.bottom = window_rect.bottom + (device_window.height - client_rect.bottom);
   SetWindowPos(hwnd, 0, adjusted_window_rect.left, adjusted_window_rect.top, adjusted_window_rect.right, adjusted_window_rect.bottom, 0);
 
-  device_window.pixel_buffer = push_array(uint32_t, device_window.width*device_window.height);
+  device_window.backbuffer = push_array(uint32_t, device_window.width*device_window.height);
 
   BITMAPINFO* bmi = &device_window.bitmap_info;
   bmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);

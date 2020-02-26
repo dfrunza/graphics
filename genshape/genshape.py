@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import math
 from freetype import Face, \
        FT_LOAD_NO_HINTING, FT_LOAD_NO_SCALE, FT_LOAD_NO_BITMAP
 
