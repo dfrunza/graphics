@@ -394,13 +394,13 @@ void sort_active_edge_list(EdgeList* list) {
   }
 }
 
-#include "font_shapes.c"
+#include "shape_data.c"
 
 Shape* find_shape(wchar_t character) {
   Shape* result = 0;
-  for (int i = 0; i < sizeof_array(font_shapes); ++i) {
-    if (font_shapes[i].character == character) {
-      result = &font_shapes[i];
+  for (int i = 0; i < sizeof_array(shape_data); ++i) {
+    if (shape_data[i].character == character) {
+      result = &shape_data[i];
       break;
     }
   }
@@ -429,6 +429,11 @@ MyPolygon new_empty_polygon() {
 
 Shape new_empty_shape() {
   Shape result = {0};
+  return result;
+}
+
+Matrix3 new_empty_matrix3() {
+  Matrix3 result = {0};
   return result;
 }
 
@@ -524,11 +529,6 @@ void make_polygon(MyPolygon* polygon, Shape* shape, DrawingSurface* drawing_surf
   }
 
   polygon->edge_list = edge_list;
-}
-
-Matrix3 new_empty_matrix3() {
-  Matrix3 result = {0};
-  return result;
 }
 
 float y_intercept_at(DrawingSurface* drawing_surface, int scanline_nr) {
@@ -986,7 +986,7 @@ void draw(DeviceWindow* device_window) {
   //wchar_t* string = L"abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"▐";
+  wchar_t* string = L"abcd";
   int string_length = wcslen(string);
 
   MyRectangle* shape_bb = push_array(MyRectangle, string_length);
@@ -1024,7 +1024,7 @@ void draw(DeviceWindow* device_window) {
   ViewWindow view_window = {0};
   view_window.width = 100.f;
   view_window.height = 100.f;
-  //view_window.lower_left = max_bb.lower_left;
+  view_window.lower_left = max_bb.lower_left;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
   view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
@@ -1058,11 +1058,11 @@ void draw(DeviceWindow* device_window) {
     }
   }
 
-//  for (int i = 0; i < string_length; ++i) {
-//    Matrix3 horizontal_align_xform = {0};
-//    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 0);
-//    apply_xform(&shapes[i], &horizontal_align_xform);
-//  }
+  for (int i = 0; i < string_length; ++i) {
+    Matrix3 horizontal_align_xform = {0};
+    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 0);
+    apply_xform(&shapes[i], &horizontal_align_xform);
+  }
 
   Shape* clipped_shapes = push_array(Shape, string_length);
   for (int i = 0; i < string_length; ++i) {

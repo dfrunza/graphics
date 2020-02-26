@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import math
 from freetype import Face, \
-       FT_LOAD_DEFAULT, FT_LOAD_NO_BITMAP
+       FT_LOAD_NO_HINTING, FT_LOAD_NO_SCALE, FT_LOAD_NO_BITMAP
 
 # sudo -H pip3 install freetype-py fonttools numpy
 
@@ -10,6 +10,8 @@ FONT_NAME = "Px437_IBM_ISO8"
 CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
 CHAR_LIST += "~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./"
 CHAR_LIST += "▲♠♣★■▬▄▪▌▐"
+FONT_SIZE = 16  # in pixels
+DPI = 72
 
 def escape_character(character):
   escapable_chars = ("\\", "\'", )
@@ -17,18 +19,18 @@ def escape_character(character):
     return "\\" + character
   return character
 
-c_source_file = open("font_shapes.c", "w", encoding="utf-8")
+c_source_file = open("shape_data.c", "w", encoding="utf-8")
 c_source_file.write("// -*- coding: utf-8 -*-\n\n")
 c_source_file.write("#define FONT_NAME L\"%s\"\n\n" % FONT_NAME)
 
-face = Face("fonts/%s.ttf" % FONT_NAME)
-face.set_char_size(1, 1, 72, 72)
+face = Face("genshape/ttf/%s.ttf" % FONT_NAME)
+face.set_char_size(FONT_SIZE*64, FONT_SIZE*64, DPI, DPI)
 print("%s.units_per_EM=%s" % (FONT_NAME, face.units_per_EM))
 
 shape_id = 0
 for character in CHAR_LIST:
   c_source_file.write("//  '%s'\n" % character)
-  face.load_char(character, FT_LOAD_DEFAULT|FT_LOAD_NO_BITMAP)
+  face.load_char(character, FT_LOAD_NO_HINTING|FT_LOAD_NO_BITMAP)
   outline = face.glyph.outline
 
   s_contour_counts = ""
@@ -42,7 +44,7 @@ for character in CHAR_LIST:
     s_contour_points += "\t"
     for p in range(start_point_i, end_point_i+1):
       x, y = outline.points[p]
-      s_contour_points += "{%0.1ff, %0.1ff, 1.f}, " % (x, y)
+      s_contour_points += "{%0.1ff, %0.1ff, 1.f}, " % (x/64.0, y/64.0)
       contour_point_count += 1
     total_point_count += contour_point_count
     s_contour_points += "\n\n"
@@ -64,5 +66,5 @@ for shape_id in range(0, len(CHAR_LIST)):
   s_font_data += "\t.points=shape_%d_points,\n" % shape_id
   s_font_data += "\t.total_point_count=shape_%d_total_point_count,\n" % shape_id
   s_font_data += "\t}, \n"
-c_source_file.write("Shape font_shapes[] = {\n%s};\n" % s_font_data)
+c_source_file.write("Shape shape_data[] = {\n%s};\n" % s_font_data)
 

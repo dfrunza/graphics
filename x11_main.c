@@ -32,8 +32,7 @@ global Arena arena;
 #include "drawing.c"
 #include "x11_main.h"
 
-xcb_image_t*
-create_x11_framebuffer(xcb_connection_t* conn, X11DeviceWindow* device_window) {
+xcb_image_t* create_x11_framebuffer(xcb_connection_t* conn, X11DeviceWindow* device_window) {
   const xcb_setup_t* setup = xcb_get_setup(conn);
   xcb_format_t* format_at = xcb_setup_pixmap_formats(setup);
   xcb_format_t* format_end = format_at + xcb_setup_pixmap_formats_length(setup);
@@ -58,8 +57,7 @@ create_x11_framebuffer(xcb_connection_t* conn, X11DeviceWindow* device_window) {
   return result;
 }
 
-int
-main(int argc, char** argv) {
+int main(int argc, char** argv) {
   uint32_t values[2];
 
   arena.memory = malloc(20*MEGABYTE);
