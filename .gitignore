@@ -1,6 +1,7 @@
 .vimprj/
 .idea/
 _build.sh
+genshape/_build.sh
 drawing
 drawing.exe
 genshape/genshape
