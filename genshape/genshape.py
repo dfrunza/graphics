@@ -6,9 +6,10 @@ from freetype import Face, \
 # sudo -H pip3 install freetype-py fonttools numpy
 
 FONT_NAME = "Px437_IBM_ISO8"
-CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
-CHAR_LIST += "~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./"
-CHAR_LIST += "▲♠♣★■▬▄▪▌▐"
+CHAR_LIST = "■"
+#CHAR_LIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
+#CHAR_LIST += "~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./"
+#CHAR_LIST += "▲■▬▪▌▐"
 FONT_SIZE = 16  # in pixels
 DPI = 72
 

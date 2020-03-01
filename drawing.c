@@ -986,7 +986,7 @@ void draw(DeviceWindow* device_window) {
   //wchar_t* string = L"abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"abcdABCD123";
+  wchar_t* string = L"AB▲■";
   int string_length = wcslen(string);
 
   MyRectangle* shape_bb = push_array(MyRectangle, string_length);
