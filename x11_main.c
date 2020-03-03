@@ -63,14 +63,14 @@ int main(int argc, char** argv) {
   arena.memory = malloc(20*MEGABYTE);
   if (!arena.memory) {
     printf("ERROR\n");
-    exit(1);
+    return -1;
   }
   arena.avail = arena.memory;
 
   xcb_connection_t* connection = xcb_connect(NULL, NULL);
   if (!connection) {
     printf("ERROR\n");
-    exit(1);
+    return -1;
   }
 
   const xcb_setup_t* setup = xcb_get_setup(connection);
@@ -78,8 +78,8 @@ int main(int argc, char** argv) {
   //printf("root depth %d\n",screen->root_depth);
 
   X11DeviceWindow device_window = {};
-  device_window.width = 100;
-  device_window.height = 100;
+  device_window.width = 400;
+  device_window.height = 400;
   device_window.bytes_per_pixel = 4;
   device_window.bits_per_pixel = device_window.bytes_per_pixel*8;
   device_window.backbuffer_size_pixels = device_window.width*device_window.height;
@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
   if (x11_image == 0) {
     printf("ERROR\n");
     xcb_disconnect(connection);
-    return 1;
+    return -1;
   }
 
   uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;

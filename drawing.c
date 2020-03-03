@@ -292,20 +292,33 @@ void set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* d
   int pixel_x = round((x - drawing_surface->x_min)/drawing_surface->pixel_width);
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
-  persistent float blackness_level_map[3][3] = {
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f}
+  persistent float blackness_level_map[4][4] = {
+//    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
+//    {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
+//    {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
+//    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
 
-    {1.f/16.f, 1.f/8.f, 1.f/16.f},
-    {1.f/8.f, 1.f/4.f, 1.f/8.f},
-    {1.f/16.f, 1.f/8.f, 1.f/16.f}
+    {1.f/48.f, 5.f/96.f, 5.f/96.f, 1.f/48.f},
+    {5.f/96.f, 1.f/8.f, 1.f/8.f, 5.f/96.f},
+    {5.f/96.f, 1.f/8.f, 1.f/8.f, 5.f/96.f},
+    {1.f/48.f, 5.f/96.f, 5.f/96.f, 1.f/48.f},
   };
-  int blackness_box_x = pixel_x % 3;
-  int blackness_box_y = pixel_y % 3;
+  int blackness_box_x = pixel_x % 4;
+  int blackness_box_y = pixel_y % 4;
   int pixel_blackness = round(blackness_level_map[blackness_box_x][blackness_box_y]*255.f);
-  int device_pixel_x = pixel_x/3;
-  int device_pixel_y = pixel_y/3;
+  int device_pixel_x = pixel_x/4;
+  int device_pixel_y = pixel_y/4;
+
+//  persistent float blackness_level_map[3][3] = {
+//    {1.f/16.f, 1.f/8.f, 1.f/16.f},
+//    {1.f/8.f, 1.f/4.f, 1.f/8.f},
+//    {1.f/16.f, 1.f/8.f, 1.f/16.f}
+//  };
+//  int blackness_box_x = pixel_x % 3;
+//  int blackness_box_y = pixel_y % 3;
+//  int pixel_blackness = round(blackness_level_map[blackness_box_x][blackness_box_y]*255.f);
+//  int device_pixel_x = pixel_x/3;
+//  int device_pixel_y = pixel_y/3;
 
   increase_pixel_blackness(device_window, device_pixel_x, device_pixel_y, pixel_blackness);
 }
@@ -971,8 +984,8 @@ void draw_test(WinDeviceWindow* device_window) {
 
 void draw(DeviceWindow* device_window) {
   DrawingSurface drawing_surface = {0};
-  drawing_surface.x_pixel_count = device_window->width*3;
-  drawing_surface.y_pixel_count = device_window->height*3;
+  drawing_surface.x_pixel_count = device_window->width*4;
+  drawing_surface.y_pixel_count = device_window->height*4;
   drawing_surface.x_min = -1.f;
   drawing_surface.x_max = 1.f;
   drawing_surface.y_min = -1.f;
@@ -989,7 +1002,6 @@ void draw(DeviceWindow* device_window) {
   wchar_t* string = L"ABCdef123▲■";
   int string_length = wcslen(string);
 
-  MyRectangle* shape_bb = push_array(MyRectangle, string_length);
   MyRectangle max_bb = {0};
   max_bb.lower_left.x = INT_MAX;
   max_bb.lower_left.y = INT_MAX;
@@ -998,20 +1010,20 @@ void draw(DeviceWindow* device_window) {
   for (int i = 0; i < string_length; ++i) {
     Shape* shape = find_shape(string[i]);
     assert (shape);
-    shape_bb[i] = *shape->bbox; //get_bounding_box(shape);
+    MyRectangle* shape_bbox = shape->bbox;
     printf("Bounding box '%lc': (x0=%.4f, y0=%.4f), (x1=%.4f, y1=%.4f)\n", string[i],
-            shape_bb[i].lower_left.x, shape_bb[i].lower_left.y, shape_bb[i].upper_right.x, shape_bb[i].upper_right.y);
-    if (shape_bb[i].lower_left.x < max_bb.lower_left.x) {
-      max_bb.lower_left.x = shape_bb[i].lower_left.x;
+            shape_bbox->lower_left.x, shape_bbox->lower_left.y, shape_bbox->upper_right.x, shape_bbox->upper_right.y);
+    if (shape_bbox->lower_left.x < max_bb.lower_left.x) {
+      max_bb.lower_left.x = shape_bbox->lower_left.x;
     }
-    if (shape_bb[i].lower_left.y < max_bb.lower_left.y) {
-      max_bb.lower_left.y = shape_bb[i].lower_left.y;
+    if (shape_bbox->lower_left.y < max_bb.lower_left.y) {
+      max_bb.lower_left.y = shape_bbox->lower_left.y;
     }
-    if (shape_bb[i].upper_right.x > max_bb.upper_right.x) {
-      max_bb.upper_right.x = shape_bb[i].upper_right.x;
+    if (shape_bbox->upper_right.x > max_bb.upper_right.x) {
+      max_bb.upper_right.x = shape_bbox->upper_right.x;
     }
-    if (shape_bb[i].upper_right.y > max_bb.upper_right.y) {
-      max_bb.upper_right.y = shape_bb[i].upper_right.y;
+    if (shape_bbox->upper_right.y > max_bb.upper_right.y) {
+      max_bb.upper_right.y = shape_bbox->upper_right.y;
     }
   }
   printf("Max. extent bbox: (x0=%.4f, y0=%.4f), (x1=%.4f, y1=%.4f)\n",
@@ -1023,13 +1035,13 @@ void draw(DeviceWindow* device_window) {
   int line_spacing = font_height + 0.10f*font_height;
 
   ViewWindow view_window = {0};
-  view_window.width = 100.f;
-  view_window.height = 100.f;
+  view_window.width = (float)device_window->width;
+  view_window.height = (float)device_window->height;
   view_window.lower_left = max_bb.lower_left;
   view_window.upper_right.x = view_window.lower_left.x + view_window.width;
   view_window.upper_right.y = view_window.lower_left.y + view_window.height;
-  view_window.center.x = view_window.lower_left.x + view_window.width/2.f;
-  view_window.center.y = view_window.lower_left.y + view_window.height/2.f;
+  view_window.center.x = view_window.lower_left.x + view_window.width/2.0f;
+  view_window.center.y = view_window.lower_left.y + view_window.height/2.0f;
 
   float clipping_boundary[ClipEdge_COUNT] = {0};
   clipping_boundary[ClipEdge_Left] = view_window.lower_left.x;
@@ -1061,7 +1073,7 @@ void draw(DeviceWindow* device_window) {
 
   for (int i = 0; i < string_length; ++i) {
     Matrix3 horizontal_align_xform = {0};
-    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 0+4);
+    mk_translate_matrix(&horizontal_align_xform, i*(font_width+character_spacing), 0+16);
     apply_xform(&shapes[i], &horizontal_align_xform);
   }
 
@@ -1074,7 +1086,7 @@ void draw(DeviceWindow* device_window) {
   clear_device_window(device_window, 255);
   for (int i = 0; i < string_length; ++i) {
     Matrix3 translate_window = {0};
-    mk_translate_matrix(&translate_window, -view_window.center.x+0, -view_window.center.y);
+    mk_translate_matrix(&translate_window, -view_window.center.x, -view_window.center.y);
     apply_xform(&clipped_shapes[i], &translate_window);
 
     Matrix3 scale_window = {0};
