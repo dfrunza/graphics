@@ -394,7 +394,7 @@ void sort_active_edge_list(EdgeList* list) {
   }
 }
 
-#include "shape_data.c"
+#include "genshape/shape_data.c"
 
 Shape* find_shape(wchar_t character) {
   Shape* result = 0;
@@ -986,7 +986,7 @@ void draw(DeviceWindow* device_window) {
   //wchar_t* string = L"abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"AB▲■";
+  wchar_t* string = L"ABCdef123▲■";
   int string_length = wcslen(string);
 
   MyRectangle* shape_bb = push_array(MyRectangle, string_length);
@@ -997,7 +997,8 @@ void draw(DeviceWindow* device_window) {
   max_bb.upper_right.y = INT_MIN;
   for (int i = 0; i < string_length; ++i) {
     Shape* shape = find_shape(string[i]);
-    shape_bb[i] = get_bounding_box(shape);
+    assert (shape);
+    shape_bb[i] = *shape->bbox; //get_bounding_box(shape);
     printf("Bounding box '%lc': (x0=%.4f, y0=%.4f), (x1=%.4f, y1=%.4f)\n", string[i],
             shape_bb[i].lower_left.x, shape_bb[i].lower_left.y, shape_bb[i].upper_right.x, shape_bb[i].upper_right.y);
     if (shape_bb[i].lower_left.x < max_bb.lower_left.x) {

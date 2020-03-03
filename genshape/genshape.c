@@ -6,6 +6,7 @@
 #include <wchar.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_BBOX_H
 
 #define local static
 #define global static
@@ -17,6 +18,20 @@
 #define KILOBYTE 1024
 #define MEGABYTE 1024*KILOBYTE
 #define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
+
+typedef struct {
+  uint8_t* memory;
+  uint8_t* avail;
+} Arena;
+
+char* font_name = "Px437_IBM_ISO8.ttf";
+int font_size_px = 16;
+int dpi = 72;
+wchar_t char_list[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+  "abcdefghijklmnopqrstuvwxyz" \
+  "0123456789 " \
+  "~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./" \
+  "▲■▬▪▌▐";
 
 char* codepoint_to_utf8(wchar_t c)
 {
@@ -51,12 +66,29 @@ error:
   return utf8_buffer;
 }
 
+void* push_object(Arena* arena, size_t block_size) {
+  void* object = arena->avail;
+  arena->avail += block_size + 1*KILOBYTE;
+  return object;
+}
+
+#define push_struct(type) \
+  (type*) push_object(&arena, sizeof(type))
+
+#define push_array(type, count) \
+  (type*) push_object(&arena, sizeof(type)*(count))
+
+global Arena arena;
+
 int main()
 {
-  char* font_name = "Px437_IBM_ISO8";
-  int font_size_px = 16;
-  int dpi = 72;
-  wchar_t char_list[] = L"AB▲■";
+  arena.memory = malloc(20*MEGABYTE);
+  if (!arena.memory) {
+    printf("ERROR\n");
+    return 1;
+  }
+  arena.avail = arena.memory;
+
   int char_list_len = wcslen(char_list);
 
   FILE* c_source_file = fopen("shape_data.c", "w");
@@ -73,9 +105,9 @@ int main()
     return 1;
   }
   FT_Face face;
-  char ttf_path[128];
-  sprintf(ttf_path, "genshape/ttf/%s.ttf", font_name);
-  if (FT_New_Face(library, ttf_path, 0, &face)) {
+  char fonts_path[128];
+  sprintf(fonts_path, "fonts/%s", font_name);
+  if (FT_New_Face(library, fonts_path, 0, &face)) {
     printf("ERROR\n");
     return 1;
   }
@@ -86,8 +118,8 @@ int main()
   printf("%s.units_per_EM=%d\n", font_name, face->units_per_EM);
 
   char* error = 0;
-  char s_contour_counts[1*KILOBYTE];
-  char s_contour_points[1*KILOBYTE];
+  char* s_contour_counts = push_array(char, 1*MEGABYTE);
+  char* s_contour_points = push_array(char, 1*MEGABYTE);
   int shape_id = 0;
   for (wchar_t* at = char_list; *at != 0; ++at) {
     wchar_t character = *at;
@@ -99,6 +131,10 @@ int main()
       break;
     }
     FT_Outline outline = face->glyph->outline;
+    FT_BBox bbox = {0};
+    FT_Outline_Get_BBox(&outline, &bbox);
+    fprintf(c_source_file, "MyRectangle shape_%d_bbox = {%0.1ff, %0.1ff, 1.0f, %0.1ff, %0.1ff, 1.0f};\n",
+            shape_id, bbox.xMin/64.0f, bbox.yMin/64.0f, bbox.xMax/64.0f, bbox.yMax/64.0f);
 
     strcpy(s_contour_counts, "");
     strcpy(s_contour_points, "");
@@ -133,30 +169,33 @@ int main()
     printf(error);
     return 1;
   }
-  char s_shape_data[1*KILOBYTE] = {0};
-  char temp_str_buffer[1*KILOBYTE] = {0};
+  char* s_shape_data = push_array(char, 1*MEGABYTE);
+  char* temp_str_buffer = push_array(char, 1*MEGABYTE);
   for (int s = 0; s < char_list_len; ++s) {
     sprintf(temp_str_buffer, "\t{\n");
     strcat(s_shape_data, temp_str_buffer);
 
     unsigned char* utf8_character = codepoint_to_utf8(char_list[s]);
     if ((char_list[s] == L'\\') || (char_list[s] == '\'')) {
-      sprintf(temp_str_buffer, "\t\t.character=L'\\%s',\n", utf8_character);
+      sprintf(temp_str_buffer, "\t\t.character = L'\\%s',\n", utf8_character);
     } else {
-      sprintf(temp_str_buffer, "\t\t.character=L'%s',\n", utf8_character);
+      sprintf(temp_str_buffer, "\t\t.character = L'%s',\n", utf8_character);
     }
     strcat(s_shape_data, temp_str_buffer);
 
-    sprintf(temp_str_buffer, "\t\t.contours=shape_%d_contours,\n", s);
+    sprintf(temp_str_buffer, "\t\t.contours = shape_%d_contours,\n", s);
     strcat(s_shape_data, temp_str_buffer);
 
-    sprintf(temp_str_buffer, "\t\t.n_contours=shape_%d_n_contours,\n", s);
+    sprintf(temp_str_buffer, "\t\t.n_contours = shape_%d_n_contours,\n", s);
     strcat(s_shape_data, temp_str_buffer);
 
-    sprintf(temp_str_buffer, "\t\t.points=shape_%d_points,\n", s);
+    sprintf(temp_str_buffer, "\t\t.points = shape_%d_points,\n", s);
     strcat(s_shape_data, temp_str_buffer);
 
-    sprintf(temp_str_buffer, "\t\t.total_point_count=shape_%d_total_point_count,\n", s);
+    sprintf(temp_str_buffer, "\t\t.total_point_count = shape_%d_total_point_count,\n", s);
+    strcat(s_shape_data, temp_str_buffer);
+
+    sprintf(temp_str_buffer, "\t\t.bbox = &shape_%d_bbox,\n", s);
     strcat(s_shape_data, temp_str_buffer);
 
     sprintf(temp_str_buffer, "\t}, \n");

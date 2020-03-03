@@ -6,4 +6,4 @@ drawing
 drawing.exe
 genshape/genshape
 genshape/genshape.exe
-shape_data.c
+genshape/shape_data.c

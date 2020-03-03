@@ -48,8 +48,20 @@ typedef struct {
 } Vector3, Point;
 
 typedef struct {
-  Point lower_left;
-  Point upper_right;
+  union {
+    Point lower_left;
+    struct {
+      float lower_left_x;
+      float lower_left_y;
+    };
+  };
+  union {
+    Point upper_right;
+    struct {
+      float upper_right_x;
+      float upper_right_y;
+    };
+  };
 } MyRectangle;
 
 typedef struct {
@@ -58,6 +70,7 @@ typedef struct {
   int n_contours;
   Point* points;
   int total_point_count;
+  MyRectangle* bbox;
 } Shape;
 
 typedef struct Edge {
