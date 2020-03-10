@@ -24,13 +24,14 @@ typedef struct {
   uint8_t* avail;
 } Arena;
 
-char* font_name = "Px437_IBM_ISO8.ttf";
+char* font_name = "Unifont.ttf";
 int font_size_px = 16;
 int dpi = 72;
 wchar_t char_list[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
-  "abcdefghijklmnopqrstuvwxyz" \
-  "0123456789 " \
+  " abcdefghijklmnopqrstuvwxyz" \
+  "0123456789" \
   "~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./" \
+  "±µ¶·°½" \
   "▲■▬▪▌▐";
 
 char* codepoint_to_utf8(wchar_t c)
