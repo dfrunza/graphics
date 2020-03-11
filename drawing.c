@@ -991,11 +991,14 @@ void draw(DeviceWindow* device_window) {
   drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
-  //wchar_t* string = L"AACDEFGHIJKLMNOPQRSTUVWXYZ";
-  //wchar_t* string = L"abcdefghijklmnopqrstuvwxyz";
+  //wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
-  //wchar_t* string = L" ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
+  //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
+  wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    " abcdefghijklmnopqrstuvwxyz"
+    " 0123456789"
+    " ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
   int string_length = wcslen(string);
 
   MyRectangle max_bbox = {0};
@@ -1072,7 +1075,7 @@ void draw(DeviceWindow* device_window) {
     Shape* shape = &shapes[i];
     MyRectangle* shape_bbox = shape->bbox;
     float lower_left_x = character_spacing + i*(font_width+character_spacing);
-    float lower_left_y = shape_bbox->lower_left.y+line_spacing;
+    float lower_left_y = shape_bbox->lower_left.y+line_spacing+font_height;
     Matrix3 horizontal_align_xform = {0};
     mk_translate_matrix(&horizontal_align_xform, lower_left_x, lower_left_y);
     apply_xform(shape, &horizontal_align_xform);
