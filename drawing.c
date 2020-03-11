@@ -287,6 +287,7 @@ void set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* d
   int pixel_x = round((x - drawing_surface->x_min)/drawing_surface->pixel_width);
   assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
 
+// 4x4
   persistent float blackness_level_map[4][4] = {
     {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
     {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
@@ -995,10 +996,7 @@ void draw(DeviceWindow* device_window) {
   //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    " abcdefghijklmnopqrstuvwxyz"
-    " 0123456789"
-    " ~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
+  wchar_t* string = L"ADEF";
   int string_length = wcslen(string);
 
   MyRectangle max_bbox = {0};
@@ -1029,8 +1027,8 @@ void draw(DeviceWindow* device_window) {
          max_bbox.lower_left.x, max_bbox.lower_left.y, max_bbox.upper_right.x, max_bbox.upper_right.y);
   int font_width = max_bbox.upper_right.x - max_bbox.lower_left.x;
   int font_height = max_bbox.upper_right.y - max_bbox.lower_left.y;
-  int character_spacing = 2;  // px
-  int line_spacing = 4; // px
+  int character_spacing = 0;  // px
+  int line_spacing = 2; // px
 
   ViewWindow view_window = {0};
   view_window.width = (float)device_window->width;

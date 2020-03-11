@@ -24,7 +24,7 @@ typedef struct {
   uint8_t* avail;
 } Arena;
 
-char* font_name = "Unifont.ttf";
+char* font_name = "ProggyVector.ttf";
 int font_size_px = 16;
 int dpi = 72;
 wchar_t char_list[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
@@ -134,7 +134,7 @@ int main()
     FT_Outline outline = face->glyph->outline;
     FT_BBox bbox = {0};
     FT_Outline_Get_BBox(&outline, &bbox);
-    fprintf(c_source_file, "MyRectangle shape_%d_bbox = {%0.1ff, %0.1ff, 1.0f, %0.1ff, %0.1ff, 1.0f};\n",
+    fprintf(c_source_file, "MyRectangle shape_%d_bbox = {%ff, %ff, 1.0f, %ff, %ff, 1.0f};\n",
             shape_id, bbox.xMin/64.0f, bbox.yMin/64.0f, bbox.xMax/64.0f, bbox.yMax/64.0f);
 
     strcpy(s_contour_counts, "");
@@ -149,7 +149,7 @@ int main()
       strcat(s_contour_points, "\t");
       for (int p = start_point_i; p <= end_point_i; ++p) {
         FT_Vector point = outline.points[p];
-        sprintf(temp_str_buffer, "{%0.1ff, %0.1ff, 1.0f}, ", point.x/64.0f, point.y/64.0f);
+        sprintf(temp_str_buffer, "{%ff, %ff, 1.0f}, ", point.x/64.0f, point.y/64.0f);
         strcat(s_contour_points, temp_str_buffer);
         ++contour_point_count;
       }
