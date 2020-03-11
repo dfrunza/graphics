@@ -646,9 +646,8 @@ void clear_device_window(DeviceWindow* device_window, uint8_t blackness) {
   }
 }
 
-#if 0/*>--*/
-void
-line(int x0, int y0, int x1, int y1) {
+void draw_line(DrawingSurface* drawing_surface, DeviceWindow* device_window,
+               int x0, int y0, int x1, int y1) {
   int abs_dx = abs(x1 - x0);
   int abs_dy = abs(y1 - y0);
 
@@ -661,7 +660,7 @@ line(int x0, int y0, int x1, int y1) {
       x_end = x0;
     }
     for (; x <= x_end; ++x) {
-      draw_pixel_black(x, y);
+      set_pixel_on_device_window(drawing_surface, device_window, x, y);
     }
   }
   else
@@ -703,7 +702,7 @@ line(int x0, int y0, int x1, int y1) {
     }
 
     for (; x <= x_end; ++x) {
-      draw_pixel_black(*p_x, *p_y);
+      set_pixel_on_device_window(drawing_surface, device_window, *p_x, *p_y);
       if (p < 0) {
         p += 2*abs_dy;
       } else {
@@ -714,10 +713,8 @@ line(int x0, int y0, int x1, int y1) {
   }
 }
 
+#if 0/*>--*/
 void
-line_black(int x0, int y0, int x1, int y1) {
-  line(x0, y0, x1, y1);
-}
 
 void
 circle(int center_x, int center_y, int radius) {
@@ -980,23 +977,14 @@ void draw_test(WinDeviceWindow* device_window) {
 #endif
 
 void draw(DeviceWindow* device_window) {
-  DrawingSurface drawing_surface = {0};
-  drawing_surface.x_pixel_count = device_window->width*4;
-  drawing_surface.y_pixel_count = device_window->height*4;
-  drawing_surface.x_min = -0.5f;
-  drawing_surface.x_max = 0.5f;
-  drawing_surface.y_min = -0.5f;
-  drawing_surface.y_max = 0.5f;
-  drawing_surface.width = drawing_surface.x_max - drawing_surface.x_min;
-  drawing_surface.height = drawing_surface.y_max - drawing_surface.y_min;
-  drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
-  drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
-
+// Define the characters to be drawn, compute the maximum bounding box and other
+// parameters such as the font width.
+// -----------------------------------------------------------------------------
   //wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"ADEF";
+  wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   int string_length = wcslen(string);
 
   MyRectangle max_bbox = {0};
@@ -1029,7 +1017,22 @@ void draw(DeviceWindow* device_window) {
   int font_height = max_bbox.upper_right.y - max_bbox.lower_left.y;
   int character_spacing = 0;  // px
   int line_spacing = 2; // px
+// -----------------------------------------------------------------------------
 
+// Set-up the drawing surface, the viewing window, the clipping boundary.
+// -----------------------------------------------------------------------------
+  DrawingSurface drawing_surface = {0};
+  drawing_surface.x_pixel_count = device_window->width*4;
+  drawing_surface.y_pixel_count = device_window->height*4;
+  drawing_surface.x_min = -0.5f;
+  drawing_surface.x_max = 0.5f;
+  drawing_surface.y_min = -0.5f;
+  drawing_surface.y_max = 0.5f;
+  drawing_surface.width = drawing_surface.x_max - drawing_surface.x_min;
+  drawing_surface.height = drawing_surface.y_max - drawing_surface.y_min;
+  drawing_surface.pixel_width = drawing_surface.width / drawing_surface.x_pixel_count;
+  drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
+  
   ViewWindow view_window = {0};
   view_window.width = (float)device_window->width;
   view_window.height = (float)device_window->height;
@@ -1050,7 +1053,10 @@ void draw(DeviceWindow* device_window) {
   printf("Clipping window: (Left=%.4f,Right=%.4f,Bottom=%.4f,Top=%.4f)\n",
          clipping_boundary[ClipEdge_Left], clipping_boundary[ClipEdge_Right],
          clipping_boundary[ClipEdge_Bottom], clipping_boundary[ClipEdge_Top]);
+// -----------------------------------------------------------------------------
 
+// Arrange the shapes inside the world space.
+// -----------------------------------------------------------------------------
   Shape* shapes = push_array(Shape, string_length);
   for (int i = 0; i < string_length; ++i) {
     Shape* shape_template = find_shape(string[i]);
@@ -1084,8 +1090,13 @@ void draw(DeviceWindow* device_window) {
     clipped_shapes[i] = new_empty_shape();
     clip_shape(&shapes[i], clipping_boundary, &clipped_shapes[i]);
   }
+// -----------------------------------------------------------------------------
 
   clear_device_window(device_window, 255);
+
+
+// Convert the shape points to normalized coordinates.
+// -----------------------------------------------------------------------------
   for (int i = 0; i < string_length; ++i) {
     Matrix3 translate_window = {0};
     mk_translate_matrix(&translate_window, -view_window.center.x, -view_window.center.y);
@@ -1094,12 +1105,27 @@ void draw(DeviceWindow* device_window) {
     Matrix3 scale_window = {0};
     mk_scale_matrix(&scale_window, drawing_surface.width/view_window.width, drawing_surface.height/view_window.height);
     apply_xform(&clipped_shapes[i], &scale_window);
+  }
+// -----------------------------------------------------------------------------
 
+// Draw the shapes.
+// -----------------------------------------------------------------------------
+  for (int i = 0; i < string_length; ++i) {
     if (clipped_shapes[i].total_point_count > 0) {
       MyPolygon polygon = {0};
       make_polygon(&polygon, &clipped_shapes[i], &drawing_surface);
       draw_polygon(&polygon, &drawing_surface, device_window);
     }
   }
+// -----------------------------------------------------------------------------
+
+#if 0
+  Line line = {0};
+  line.x0 = 10.f;
+  line.y0 = 10.f;
+  line.x1 = 100.f;
+  line.y1 = 100.f;
+  draw_line(&line, &drawing_surface, device_window);
+#endif
 }
 

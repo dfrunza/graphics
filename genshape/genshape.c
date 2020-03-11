@@ -24,7 +24,7 @@ typedef struct {
   uint8_t* avail;
 } Arena;
 
-char* font_name = "ProggyVector.ttf";
+char* font_name = "Unifont.ttf";
 int font_size_px = 16;
 int dpi = 72;
 wchar_t char_list[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \

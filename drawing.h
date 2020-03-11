@@ -65,6 +65,21 @@ typedef struct {
 } MyRectangle;
 
 typedef struct {
+  union {
+    Point start_point;
+    struct {
+      float x0, y0;
+    };
+  };
+  union {
+    Point end_point;
+    struct {
+      float x1, y1;
+    };
+  };
+} Line;
+
+typedef struct {
   wchar_t character;
   int* contours;
   int n_contours;
