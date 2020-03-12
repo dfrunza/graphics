@@ -134,7 +134,7 @@ int main()
     FT_Outline outline = face->glyph->outline;
     FT_BBox bbox = {0};
     FT_Outline_Get_BBox(&outline, &bbox);
-    fprintf(c_source_file, "MyRectangle shape_%d_bbox = {%ff, %ff, 1.0f, %ff, %ff, 1.0f};\n",
+    fprintf(c_source_file, "fRectangle shape_%d_bbox = {%ff, %ff, 1.0f, %ff, %ff, 1.0f};\n",
             shape_id, bbox.xMin/64.0f, bbox.yMin/64.0f, bbox.xMax/64.0f, bbox.yMax/64.0f);
 
     strcpy(s_contour_counts, "");
@@ -161,7 +161,7 @@ int main()
     }
     fprintf(c_source_file, "#define shape_%d_n_contours %d\n", shape_id, outline.n_contours);
     fprintf(c_source_file, "int shape_%d_contours[] = {%s};\n", shape_id, s_contour_counts);
-    fprintf(c_source_file, "Point shape_%d_points[] = {\n%s};\n", shape_id, s_contour_points);
+    fprintf(c_source_file, "fPoint shape_%d_points[] = {\n%s};\n", shape_id, s_contour_points);
     fprintf(c_source_file, "#define shape_%d_total_point_count %d\n", shape_id, total_point_count);
     fprintf(c_source_file, "\n");
     ++shape_id;

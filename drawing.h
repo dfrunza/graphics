@@ -45,69 +45,99 @@ typedef struct {
   float x;
   float y;
   float z;
-} Vector3, Point;
+} fVector3, fPoint;
+
+typedef struct {
+  int x;
+  int y;
+  int z;
+} iVector3, iPoint;
 
 typedef struct {
   union {
-    Point lower_left;
+    fPoint lower_left;
     struct {
       float lower_left_x;
       float lower_left_y;
     };
   };
   union {
-    Point upper_right;
+    fPoint upper_right;
     struct {
       float upper_right_x;
       float upper_right_y;
     };
   };
-} MyRectangle;
+} fRectangle;
 
 typedef struct {
   union {
-    Point start_point;
+    iPoint lower_left;
+    struct {
+      int lower_left_x;
+      int lower_left_y;
+    };
+  };
+  union {
+    iPoint upper_right;
+    struct {
+      int upper_right_x;
+      int upper_right_y;
+    };
+  };
+} iRectangle;
+
+typedef struct {
+  union {
+    fPoint start_point;
     struct {
       float x0, y0;
     };
   };
   union {
-    Point end_point;
+    fPoint end_point;
     struct {
       float x1, y1;
     };
   };
-} Line;
+} fLine;
 
 typedef struct {
   wchar_t character;
   int* contours;
   int n_contours;
-  Point* points;
+  fPoint* points;
   int total_point_count;
-  MyRectangle* bbox;
+  fRectangle* bbox;
 } Shape;
 
+typedef struct {
+  int* contours;
+  int n_contours;
+  iPoint* points;
+  int total_point_count;
+} RasterShape;
+
 typedef struct Edge {
-  float x_intercept;
+  int x_intercept;
   float m, b; // y = m*x + b
   float delta_x;
   float delta_y;
   union {
     struct {
-      float x0;
-      float y0;
-      float z0;
+      int x0;
+      int y0;
+      int z0;
     };
-    Point start_point;
+    iPoint start_point;
   };
   union {
     struct {
-      float x1;
-      float y1;
-      float z1;
+      int x1;
+      int y1;
+      int z1;
     };
-    Point end_point;
+    iPoint end_point;
   };
   struct Edge* prev_edge;
   struct Edge* next_edge;
@@ -119,12 +149,12 @@ typedef struct {
 } EdgeList;
 
 typedef struct {
-  Point** contours;
+  iPoint** contours;
   int* contour_vertex_count;
   int total_vertex_count;
   int n_contours;
   EdgeList* edge_list;
-} MyPolygon;
+} Polygon;
 
 typedef struct {
   uint8_t* memory;
@@ -138,7 +168,7 @@ typedef struct {
       float y1;
       float z1;
     };
-    Vector3 col1;
+    fVector3 col1;
   };
   union {
     struct {
@@ -146,7 +176,7 @@ typedef struct {
       float y2;
       float z2;
     };
-    Vector3 col2;
+    fVector3 col2;
   };
   union {
     struct {
@@ -154,9 +184,9 @@ typedef struct {
       float y3;
       float z3;
     };
-    Vector3 col3;
+    fVector3 col3;
   };
-} Matrix3;
+} fMatrix3;
 
 typedef enum {
   ClipEdge_Left,
@@ -181,9 +211,18 @@ typedef struct {
 } DrawingSurface;
 
 typedef struct {
-  Point lower_left;
-  Point upper_right;
-  Point center;
+  int subsampling_factor;
+  int width;
+  int height;
+  int min_x, min_y;
+  int max_x, max_y;
+  int subpixel_count;
+  uint8_t *subpixel_buffer;
+} RasterSurface;
+
+typedef struct {
+  fPoint lower_left;
+  fPoint upper_right;
   float width;
   float height;
 } ViewWindow;
