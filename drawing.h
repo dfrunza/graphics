@@ -212,12 +212,13 @@ typedef struct {
 
 typedef struct {
   int subsampling_factor;
+  float* blackness_levels;
   int width;
   int height;
   int min_x, min_y;
   int max_x, max_y;
   int subpixel_count;
-  uint8_t *subpixel_buffer;
+  uint8_t* subpixel_buffer;
 } RasterSurface;
 
 typedef struct {

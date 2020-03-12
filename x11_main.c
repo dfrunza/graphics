@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 {
   uint32_t values[2];
 
-  arena.memory = malloc(20*MEGABYTE);
+  arena.memory = malloc(100*MEGABYTE);
   if (!arena.memory) {
     printf("ERROR\n");
     return -1;
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
   xcb_flush(connection);
 
   draw((DeviceWindow*)&device_window);
-  copy_backbuffer_to_framebuffer((DeviceWindow*)&device_window);
+  device_window_copy_backbuf_to_framebuf((DeviceWindow*)&device_window);
 
   xcb_image_put(connection, pixmap, gc, x11_image, 0, 0, 0);
   xcb_copy_area(connection, pixmap, x11_window, gc, 0, 0, 0, 0, x11_image->width, x11_image->height);

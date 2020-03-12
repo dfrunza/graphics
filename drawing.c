@@ -217,7 +217,7 @@ uint32_t make_grayscale_rgb32(uint8_t blackness)
   return value | value << 8 | value << 16;
 }
 
-void copy_backbuffer_to_framebuffer(DeviceWindow* device_window)
+void device_window_copy_backbuf_to_framebuf(DeviceWindow* device_window)
 {
   // flip vertically
   for (int i = 0; i < device_window->height; ++i) {
@@ -230,7 +230,7 @@ void copy_backbuffer_to_framebuffer(DeviceWindow* device_window)
   }
 }
 
-uint32_t* get_device_window_pixel_at(DeviceWindow* device_window, int x, int y)
+uint32_t* device_window_get_pixel_at(DeviceWindow* device_window, int x, int y)
 {
   uint32_t* result = device_window->backbuffer + device_window->width*y + x;
   return result;
@@ -238,7 +238,7 @@ uint32_t* get_device_window_pixel_at(DeviceWindow* device_window, int x, int y)
 
 void increase_pixel_blackness(DeviceWindow* device_window, int x, int y, int blackness)
 {
-  RgbPixel* pixel = (RgbPixel*)get_device_window_pixel_at(device_window, x, y);
+  RgbPixel* pixel = (RgbPixel*)device_window_get_pixel_at(device_window, x, y);
 
   int new_blackness = pixel->X + blackness;
   if (new_blackness > 255) {
@@ -252,13 +252,13 @@ void increase_pixel_blackness(DeviceWindow* device_window, int x, int y, int bla
 
 void draw_pixel_black(DeviceWindow* device_window, int x, int y)
 {
-  uint32_t* p = get_device_window_pixel_at(device_window, x, y);
+  uint32_t* p = device_window_get_pixel_at(device_window, x, y);
   *p = make_grayscale_rgb32(0);
 }
 
 void draw_pixel_gray(DeviceWindow* device_window, int x, int y, uint8_t blackness)
 {
-  uint32_t* p = get_device_window_pixel_at(device_window, x, y);
+  uint32_t* p = device_window_get_pixel_at(device_window, x, y);
   *p = make_grayscale_rgb32(blackness);
 }
 
@@ -271,7 +271,7 @@ void print_shape_points(Shape* shape)
   printf("\n");
 }
 
-void print_edge_list(EdgeList* edge_list)
+void edge_list_print(EdgeList* edge_list)
 {
   Edge* edge = &edge_list->entries[0];
   for (int i = 0; i < edge_list->count; ++i) {
@@ -423,7 +423,7 @@ void remove_active_edge(EdgeList* list, Edge* edge, int i)
   --list->count;
 }
 
-void sort_active_edge_list(EdgeList* list)
+void edge_list_sort(EdgeList* list)
 {
   for (int i = 0; i < list->count; ++i) {
     for (int j = i;
@@ -505,7 +505,9 @@ void raster_surface_set_pixel(RasterSurface* surface, int x, int y)
 
 // .............................................................................
 
-void make_polygon(Polygon* polygon, RasterShape* shape)
+// TODO: We could take the contours of the Shape and make a Polygon out of that,
+// instead of the Polygon having the contrours contained in it, like the Shape does.
+void shape_to_polygon(Polygon* polygon, RasterShape* shape)
 {
   polygon->contour_vertex_count = push_array(int, shape->n_contours);
   polygon->n_contours = shape->n_contours;
@@ -593,7 +595,7 @@ void make_polygon(Polygon* polygon, RasterShape* shape)
     }
     edge_list[i].count = edge_count;
     printf("Contour #%d\n", i);
-    print_edge_list(&edge_list[i]);
+    edge_list_print(&edge_list[i]);
   }
 
   polygon->edge_list = edge_list;
@@ -656,11 +658,11 @@ void draw_polygon(Polygon* polygon, RasterSurface* surface)
       }
     }
 
-    sort_active_edge_list(&active_edge_list);
+    edge_list_sort(&active_edge_list);
     if (active_edge_list.count > 0) {
       printf("--------------- %d -----------------\n", y);
       printf("y=%d\n", y);
-      print_edge_list(&active_edge_list);
+      edge_list_print(&active_edge_list);
     }
 
     assert((active_edge_list.count % 2) == 0);
@@ -1104,6 +1106,13 @@ void draw(DeviceWindow* device_window)
   
   RasterSurface raster_surface = {0};
   raster_surface.subsampling_factor = 4;
+  persistent float blackness_levels[4][4] = {
+    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
+    {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
+    {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
+    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
+  };
+  raster_surface.blackness_levels = blackness_levels[0];
   raster_surface.width = view_window.width * raster_surface.subsampling_factor;
   raster_surface.height = view_window.height * raster_surface.subsampling_factor;
   raster_surface.min_x = 0, raster_surface.min_y = 0;
@@ -1239,7 +1248,7 @@ void draw(DeviceWindow* device_window)
   }
 // .............................................................................
 
-// Draw the shapes.
+// Draw the shapes onto the Raster Surface.
 // .............................................................................
   clear_device_window(device_window, 255);
 
@@ -1247,9 +1256,32 @@ void draw(DeviceWindow* device_window)
     RasterShape* shape = &raster_shapes[i];
     if (shape->total_point_count > 0) {
       Polygon polygon = {0};
-      make_polygon(&polygon, shape);
+      shape_to_polygon(&polygon, shape);
       draw_polygon(&polygon, &raster_surface);
     }
+  }
+// .............................................................................
+
+// Draw the Raster Surface onto the Device Window.
+// .............................................................................
+  uint8_t* macro_pixel_scanline = raster_surface.subpixel_buffer;
+  for (int i = 0; i < raster_surface.width; ++i) {
+    uint8_t* macro_pixel = macro_pixel_scanline;
+    for (int j = 0; j < raster_surface.height; ++j) {
+      uint8_t* subpixel_scanline = macro_pixel;
+      for (int k = 0; k < raster_surface.subsampling_factor; ++k) {
+        uint8_t* subpixel = subpixel_scanline;
+        for (int s = 0; s < raster_surface.subsampling_factor; ++s) {
+          uint8_t subpixel_value = *subpixel;
+          printf("%d", subpixel_value);
+          ++subpixel;
+        }
+        subpixel_scanline += raster_surface.width;
+      }
+      macro_pixel += raster_surface.subsampling_factor;
+    }
+    macro_pixel_scanline += raster_surface.width * raster_surface.subsampling_factor;
+    printf("\n");
   }
 // .............................................................................
 #endif
