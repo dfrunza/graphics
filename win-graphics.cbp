@@ -3,32 +3,32 @@
 	<FileVersion major="1" minor="6" />
 	<Project>
 		<Option title="graphics" />
-		<Option makefile="_build-dummy.bat" />
+		<Option makefile="build-dummy.bat" />
 		<Option makefile_is_custom="1" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<MakeCommands>
-			<Build command="_build-dummy.bat" />
+			<Build command="build-dummy.bat" />
 			<CompileFile command="" />
 			<Clean command="" />
 			<DistClean command="" />
 			<AskRebuildNeeded command="" />
-			<SilentBuild command="_build-dummy.bat &gt; $(CMD_NULL)" />
+			<SilentBuild command="build-dummy.bat &gt; $(CMD_NULL)" />
 		</MakeCommands>
 		<Build>
 			<Target title="Debug">
-				<Option output="bin/drawing" prefix_auto="1" extension_auto="1" />
-				<Option working_dir="bin/" />
-				<Option object_output="bin/" />
+				<Option output="drawing.exe" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="." />
+				<Option object_output="." />
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<MakeCommands>
-					<Build command="_build-dummy.bat" />
+					<Build command="build-dummy.bat" />
 					<CompileFile command="" />
 					<Clean command="" />
 					<DistClean command="" />
 					<AskRebuildNeeded command="" />
-					<SilentBuild command="_build-dummy.bat &gt; $(CMD_NULL)" />
+					<SilentBuild command="build-dummy.bat &gt; $(CMD_NULL)" />
 				</MakeCommands>
 			</Target>
 		</Build>
