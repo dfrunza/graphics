@@ -80,8 +80,8 @@ int main(int argc, char** argv)
   //printf("root depth %d\n",screen->root_depth);
 
   X11DeviceWindow device_window = {};
-  device_window.width = 100;
-  device_window.height = 100;
+  device_window.width = 10;
+  device_window.height = 10;
   device_window.bytes_per_pixel = 4;
   device_window.bits_per_pixel = device_window.bytes_per_pixel*8;
   device_window.backbuffer_size_pixels = device_window.width*device_window.height;

@@ -1113,8 +1113,8 @@ void draw(DeviceWindow* device_window)
     {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
   };
   raster_surface.blackness_levels = blackness_levels[0];
-  raster_surface.width = view_window.width * raster_surface.subsampling_factor;
-  raster_surface.height = view_window.height * raster_surface.subsampling_factor;
+  raster_surface.width = device_window->width * raster_surface.subsampling_factor;
+  raster_surface.height = device_window->height * raster_surface.subsampling_factor;
   raster_surface.min_x = 0, raster_surface.min_y = 0;
   raster_surface.max_x = raster_surface.width, raster_surface.max_y = raster_surface.height;
   raster_surface.subpixel_count = raster_surface.width * raster_surface.height;
@@ -1250,7 +1250,7 @@ void draw(DeviceWindow* device_window)
 
 // Draw the shapes onto the Raster Surface.
 // .............................................................................
-  clear_device_window(device_window, 255);
+  raster_surface_clear(&raster_surface);
 
   for (int i = 0; i < string_length; ++i) {
     RasterShape* shape = &raster_shapes[i];
@@ -1264,25 +1264,52 @@ void draw(DeviceWindow* device_window)
 
 // Draw the Raster Surface onto the Device Window.
 // .............................................................................
-  uint8_t* macro_pixel_scanline = raster_surface.subpixel_buffer;
-  for (int i = 0; i < raster_surface.width; ++i) {
-    uint8_t* macro_pixel = macro_pixel_scanline;
-    for (int j = 0; j < raster_surface.height; ++j) {
-      uint8_t* subpixel_scanline = macro_pixel;
-      for (int k = 0; k < raster_surface.subsampling_factor; ++k) {
-        uint8_t* subpixel = subpixel_scanline;
-        for (int s = 0; s < raster_surface.subsampling_factor; ++s) {
-          uint8_t subpixel_value = *subpixel;
-          printf("%d", subpixel_value);
-          ++subpixel;
-        }
-        subpixel_scanline += raster_surface.width;
-      }
-      macro_pixel += raster_surface.subsampling_factor;
+
+  clear_device_window(device_window, 255);
+
+#if 0
+  uint8_t* pixel_scanline = raster_surface.subpixel_buffer;
+  for (int i = 0; i < raster_surface.height; ++i) {
+    uint8_t* pixel = pixel_scanline;
+    for (int j = 0; j < raster_surface.width; ++j) {
+      uint8_t pixel_value = *pixel;
+      printf("%d", pixel_value);
+      ++pixel;
     }
-    macro_pixel_scanline += raster_surface.width * raster_surface.subsampling_factor;
+    pixel_scanline += raster_surface.width;
     printf("\n");
   }
+  printf("\n");
+  printf("\n");
+  printf("\n");
+#endif
+
+#if 1
+  uint8_t* pixel_scanline = raster_surface.subpixel_buffer;
+  int subpixel_count = 0;
+  for (int i = 0; i < device_window->height; ++i) {
+    uint8_t* pixel_upperleft = pixel_scanline;
+    for (int j = 0; j < device_window->width; ++j) {
+      uint8_t* subpixel_scanline = pixel_upperleft;
+      for (int s = 0; s < raster_surface.subsampling_factor; ++s) {
+        uint8_t* subpixel = subpixel_scanline;
+        for (int t = 0; t < raster_surface.subsampling_factor; ++t) {
+          uint8_t subpixel_value = *subpixel;
+          assert ((subpixel_value == 0) || (subpixel_value == 1));
+          printf("%d", subpixel_value);
+          ++subpixel;
+          ++subpixel_count;
+        }
+        subpixel_scanline += raster_surface.width;
+        printf("\n");
+      }
+      pixel_upperleft += raster_surface.subsampling_factor;
+    }
+    pixel_scanline += raster_surface.width * raster_surface.subsampling_factor;
+  }
+  printf("\n");
+  assert (subpixel_count == raster_surface.subpixel_count);
+#endif
 // .............................................................................
 #endif
 
