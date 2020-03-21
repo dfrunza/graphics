@@ -250,6 +250,15 @@ void increase_pixel_blackness(DeviceWindow* device_window, int x, int y, int bla
   pixel->B = 255 - pixel->X;
 }
 
+void device_window_set_pixel_blackness(DeviceWindow* device_window, int x, int y, int blackness)
+{
+  RgbPixel* pixel = (RgbPixel*)device_window_get_pixel_at(device_window, x, y);
+  pixel->X = blackness;
+  pixel->R = 255 - pixel->X;
+  pixel->G = 255 - pixel->X;
+  pixel->B = 255 - pixel->X;
+}
+
 void draw_pixel_black(DeviceWindow* device_window, int x, int y)
 {
   uint32_t* p = device_window_get_pixel_at(device_window, x, y);
@@ -501,6 +510,60 @@ void raster_surface_set_pixel(RasterSurface* surface, int x, int y)
 {
   uint8_t* p = surface->subpixel_buffer + (y * surface->width) + x;
   *p = 1;
+}
+
+void raster_subpixel_reader_init(RasterSubpixelReader* reader, RasterSurface* surface, DeviceWindow* window)
+{
+  reader->surface_subpixel_count = surface->subpixel_count;
+  reader->subpixel_count = 0;
+  reader->pixel_scanline = surface->subpixel_buffer;
+  reader->at_pixel = reader->pixel_scanline;
+  reader->pixel_count_y = window->height;
+  reader->pixel_count_x = window->width;
+  reader->pixel_square_side = surface->subsampling_factor;
+  reader->subpixel_buffer = push_array(uint8_t, reader->pixel_square_side * reader->pixel_square_side);
+  reader->at_pixel_i = 0;
+  reader->at_pixel_j = 0;
+}
+
+bool raster_subpixel_reader_next(RasterSubpixelReader* reader)
+{
+  bool got_pixel = true;
+  if (reader->at_pixel_j >= reader->pixel_count_x)
+  {
+    ++reader->at_pixel_i;
+    if (reader->at_pixel_i >= reader->pixel_count_y)
+    {
+      got_pixel = false;
+      assert (reader->subpixel_count == reader->surface_subpixel_count);
+      return got_pixel;
+    }
+    reader->pixel_scanline += (reader->pixel_count_x * reader->pixel_square_side) * reader->pixel_square_side;
+    reader->at_pixel = reader->pixel_scanline;
+    reader->at_pixel_j = 0;
+  }
+  uint8_t* subpixel_scanline = reader->at_pixel;
+  uint8_t* dest_subpixel = reader->subpixel_buffer;
+  for (int s = 0; s < reader->pixel_square_side; ++s)
+  {
+    uint8_t* src_subpixel = subpixel_scanline;
+    for (int t = 0; t < reader->pixel_square_side; ++t)
+    {
+      uint8_t subpixel_value = *src_subpixel;
+      assert (subpixel_value == 0 || subpixel_value == 1);
+      //printf("%d", subpixel_value);
+      *dest_subpixel = subpixel_value;
+      ++dest_subpixel;
+      ++src_subpixel;
+      ++reader->subpixel_count;
+    }
+    subpixel_scanline += reader->pixel_count_x * reader->pixel_square_side;
+    //printf("\n");
+  }
+  //printf("\n");
+  reader->at_pixel += reader->pixel_square_side;
+  ++reader->at_pixel_j;
+  return got_pixel;
 }
 
 // .............................................................................
@@ -1051,7 +1114,7 @@ void draw(DeviceWindow* device_window)
   //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"■";
+  wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ~!@#$%^&*()_+-={}|:";
   int string_length = wcslen(string);
 
   fRectangle max_bbox = {0};
@@ -1082,7 +1145,7 @@ void draw(DeviceWindow* device_window)
          max_bbox.lower_left.x, max_bbox.lower_left.y, max_bbox.upper_right.x, max_bbox.upper_right.y);
   int font_width = max_bbox.upper_right.x - max_bbox.lower_left.x;
   int font_height = max_bbox.upper_right.y - max_bbox.lower_left.y;
-  int character_spacing = 0;  // px
+  int character_spacing = 2;  // px
   int line_spacing = 2; // px
 // .............................................................................
 
@@ -1284,16 +1347,20 @@ void draw(DeviceWindow* device_window)
   printf("\n");
 #endif
 
-#if 1
+#if 0
   uint8_t* pixel_scanline = raster_surface.subpixel_buffer;
   int subpixel_count = 0;
-  for (int i = 0; i < device_window->height; ++i) {
+  for (int i = 0; i < device_window->height; ++i)
+  {
     uint8_t* pixel_upperleft = pixel_scanline;
-    for (int j = 0; j < device_window->width; ++j) {
+    for (int j = 0; j < device_window->width; ++j)
+    {
       uint8_t* subpixel_scanline = pixel_upperleft;
-      for (int s = 0; s < raster_surface.subsampling_factor; ++s) {
+      for (int s = 0; s < raster_surface.subsampling_factor; ++s)
+      {
         uint8_t* subpixel = subpixel_scanline;
-        for (int t = 0; t < raster_surface.subsampling_factor; ++t) {
+        for (int t = 0; t < raster_surface.subsampling_factor; ++t)
+        {
           uint8_t subpixel_value = *subpixel;
           assert ((subpixel_value == 0) || (subpixel_value == 1));
           printf("%d", subpixel_value);
@@ -1303,6 +1370,7 @@ void draw(DeviceWindow* device_window)
         subpixel_scanline += raster_surface.width;
         printf("\n");
       }
+      printf("\n");
       pixel_upperleft += raster_surface.subsampling_factor;
     }
     pixel_scanline += raster_surface.width * raster_surface.subsampling_factor;
@@ -1310,6 +1378,41 @@ void draw(DeviceWindow* device_window)
   printf("\n");
   assert (subpixel_count == raster_surface.subpixel_count);
 #endif
+
+  persistent float blackness_level_map[4][4] = {
+    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
+    {1.f/24.f, 1.f/8.f,  1.f/8.f,  1.f/24.f},
+    {1.f/24.f, 1.f/8.f,  1.f/8.f,  1.f/24.f},
+    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
+  };
+  RasterSubpixelReader subpixel_reader = {0};
+  raster_subpixel_reader_init(&subpixel_reader, &raster_surface, device_window);
+  for (int y = 0; y < subpixel_reader.pixel_count_y; ++y)
+  {
+    for (int x = 0; x < subpixel_reader.pixel_count_x; ++x)
+    {
+      //printf("(%d, %d)\n", y, x);
+      raster_subpixel_reader_next(&subpixel_reader);
+      float pixel_value = 0.f;
+      uint8_t* subpixel_line = subpixel_reader.subpixel_buffer;
+      for (int s = 0; s < subpixel_reader.pixel_square_side; ++s)
+      {
+        uint8_t* subpixel = subpixel_line;
+        for (int t = 0; t < subpixel_reader.pixel_square_side; ++t)
+        {
+          uint8_t subpixel_value = *subpixel;
+          //printf("%d", subpixel_value);
+          pixel_value += subpixel_value * blackness_level_map[s][t] * 255.f;
+          ++subpixel;
+        }
+        //printf("= %f\n", pixel_value);
+        subpixel_line += subpixel_reader.pixel_square_side;
+      }
+      assert (pixel_value <= 255.f);
+      device_window_set_pixel_blackness(device_window, x, y, pixel_value);
+    }
+  }
+
 // .............................................................................
 #endif
 

@@ -211,6 +211,22 @@ typedef struct {
 } DrawingSurface;
 
 typedef struct {
+  uint8_t* buffer;
+  int square_side;
+} RasterSubpixel;
+
+typedef struct {
+  uint8_t* pixel_scanline;
+  int surface_subpixel_count;
+  int subpixel_count;
+  int pixel_count_y, pixel_count_x;
+  uint8_t* at_pixel;
+  int pixel_square_side;
+  uint8_t* subpixel_buffer;
+  int at_pixel_i, at_pixel_j;
+} RasterSubpixelReader;
+
+typedef struct {
   int subsampling_factor;
   float* blackness_levels;
   int width;
