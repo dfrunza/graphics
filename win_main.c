@@ -95,8 +95,8 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   }
 
   WinDeviceWindow device_window = {};
-  device_window.width = 100;
-  device_window.height = 100;
+  device_window.width = 1200;
+  device_window.height = 200;
   device_window.bytes_per_pixel = 4;
   device_window.bits_per_pixel = device_window.bytes_per_pixel*8;
   device_window.backbuffer_size_pixels = device_window.width*device_window.height;
@@ -130,7 +130,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str,
   device_window.framebuffer = push_array(uint8_t, device_window.framebuffer_size_bytes);
 
   draw((DeviceWindow*)&device_window);
-  copy_backbuffer_to_framebuffer((DeviceWindow*)&device_window);
+  device_window_copy_backbuf_to_framebuf((DeviceWindow*)&device_window);
 
   ShowWindow(hwnd, cmd_show);
   UpdateWindow(hwnd);
