@@ -87,20 +87,25 @@ typedef struct {
   };
 } iRectangle;
 
-typedef struct {
-  union {
-    fPoint start_point;
-    struct {
-      float x0, y0;
+typedef struct
+{
+  union
+  {
+    iPoint start_point;
+    struct
+    {
+      int x0, y0;
     };
   };
-  union {
-    fPoint end_point;
-    struct {
-      float x1, y1;
+  union
+  {
+    iPoint end_point;
+    struct
+    {
+      int x1, y1;
     };
   };
-} fLine;
+} iLine;
 
 typedef struct {
   wchar_t character;

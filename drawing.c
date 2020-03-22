@@ -773,56 +773,55 @@ void clear_device_window(DeviceWindow* device_window, uint8_t blackness)
   }
 }
 
-void draw_line(DrawingSurface* drawing_surface, DeviceWindow* device_window,
-               int x0, int y0, int x1, int y1)
+void draw_line(iLine* line, RasterSurface* surface)
 {
-  int abs_dx = abs(x1 - x0);
-  int abs_dy = abs(y1 - y0);
+  int abs_dx = abs(line->x1 - line->x0);
+  int abs_dy = abs(line->y1 - line->y0);
 
   if (abs_dy == 0) {
-    int y = y0;
-    int x = x0;
-    int x_end = x1;
-    if (x0 > x1) {
-      x = x1;
-      x_end = x0;
+    int y = line->y0;
+    int x = line->x0;
+    int x_end = line->x1;
+    if (line->x0 > line->x1) {
+      x = line->x1;
+      x_end = line->x0;
     }
     for (; x <= x_end; ++x) {
-      set_pixel_on_device_window(drawing_surface, device_window, x, y);
+      raster_surface_set_pixel(surface, x, y);
     }
   }
   else
   {
-    int dx = x1 - x0;
-    int dy = y1 - y0;
+    int dx = line->x1 - line->x0;
+    int dy = line->y1 - line->y0;
     int p = 2*abs_dy - abs_dx;
-    int y = y0;
-    int x = x0;
-    int x_end = x1;
+    int y = line->y0;
+    int x = line->x0;
+    int x_end = line->x1;
     int y_incr = (dy < 0) ? -1 : 1;
     if (dx < 0) {
-      y = y1;
-      x = x1;
-      x_end = x0;
+      y = line->y1;
+      x = line->x1;
+      x_end = line->x0;
       y_incr = (dy > 0) ? -1 : 1;
     }
     int *p_x = &x;
     int *p_y = &y;
 
     if (abs_dy > abs_dx) {
-      dx = y1 - y0;
-      dy = x1 - x0;
+      dx = line->y1 - line->y0;
+      dy = line->x1 - line->x0;
       abs_dx = abs(dx);
       abs_dy = abs(dy);
       p = 2*abs_dy - abs_dx;
-      y = x0;
-      x = y0;
-      x_end = y1;
+      y = line->x0;
+      x = line->y0;
+      x_end = line->y1;
       y_incr = (dy < 0) ? -1 : 1;
       if (dx < 0) {
-        y = x1;
-        x = y1;
-        x_end = y0;
+        y = line->x1;
+        x = line->y1;
+        x_end = line->y0;
         y_incr = (dy > 0) ? -1 : 1;
       }
       p_x = &y;
@@ -830,7 +829,7 @@ void draw_line(DrawingSurface* drawing_surface, DeviceWindow* device_window,
     }
 
     for (; x <= x_end; ++x) {
-      set_pixel_on_device_window(drawing_surface, device_window, *p_x, *p_y);
+      raster_surface_set_pixel(surface, *p_x, *p_y);
       if (p < 0) {
         p += 2*abs_dy;
       } else {
@@ -1121,7 +1120,7 @@ void draw(DeviceWindow* device_window)
   //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"device_window.backbuffer = push_array(uint32_t, device_window.width";
+  wchar_t* string = L"";
   int string_length = wcslen(string);
 
   fRectangle max_bbox = {0};
@@ -1176,12 +1175,12 @@ void draw(DeviceWindow* device_window)
   
   RasterSurface raster_surface = {0};
 // 3x3
-//  raster_surface.subsampling_factor = 3;
-//  persistent float blackness_levels[3][3] = {
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//  };
+  raster_surface.subsampling_factor = 3;
+  persistent float blackness_levels[3][3] = {
+    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+  };
 
 // 4x4
 //  raster_surface.subsampling_factor = 4;
@@ -1193,14 +1192,14 @@ void draw(DeviceWindow* device_window)
 //  };
 
 // 5x5
-  raster_surface.subsampling_factor = 5;
-  persistent float blackness_levels[5][5] = {
-    {1.f/48.f, 1.f/48.f, 1.f/48.f, 1.f/48.f, 1.f/48.f},
-    {1.f/48.f, 5.f/96.f, 5.f/96.f, 5.f/96.f, 1.f/48.f},
-    {1.f/48.f, 5.f/96.f, 1.f/40.f, 5.f/96.f, 1.f/48.f},
-    {1.f/48.f, 5.f/96.f, 5.f/96.f, 5.f/96.f, 1.f/48.f},
-    {1.f/48.f, 1.f/48.f, 1.f/48.f, 1.f/48.f, 1.f/48.f},
-  };
+//  raster_surface.subsampling_factor = 5;
+//  persistent float blackness_levels[5][5] = {
+//    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+//    {1.f/64.f, 1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/64.f},
+//    {1.f/64.f, 1.f/16.f, 1.f/40.f, 1.f/16.f, 1.f/64.f},
+//    {1.f/64.f, 1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/64.f},
+//    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+//  };
 
 // 6x6
 //  raster_surface.subsampling_factor = 6;
@@ -1362,6 +1361,15 @@ void draw(DeviceWindow* device_window)
   }
 // .............................................................................
 
+#if 1
+  iLine line = {0};
+  line.x0 = 10;
+  line.y0 = 10;
+  line.x1 = 200;
+  line.y1 = 150;
+  draw_line(&line, &raster_surface);
+#endif
+
 // Draw the Raster Surface onto the Device Window.
 // .............................................................................
 
@@ -1396,15 +1404,6 @@ void draw(DeviceWindow* device_window)
   }
 
 // .............................................................................
-#endif
-
-#if 0
-  Line line = {0};
-  line.x0 = 10.f;
-  line.y0 = 10.f;
-  line.x1 = 100.f;
-  line.y1 = 100.f;
-  draw_line(&line, &drawing_surface, device_window);
 #endif
 }
 
