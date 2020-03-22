@@ -71,7 +71,7 @@ LRESULT CALLBACK winproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 }
 
 int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE prev_hinstance, LPSTR cmd_str, int cmd_show) {
-  arena.memory = malloc(20*MEGABYTE);
+  arena.memory = malloc(100*MEGABYTE);
   if (!arena.memory) {
     printf("ERROR\n");
     exit(1);
