@@ -1120,7 +1120,7 @@ void draw(DeviceWindow* device_window)
   //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"";
+  wchar_t* string = L"drawing_surface.x_min = {-0.5f};";
   int string_length = wcslen(string);
 
   fRectangle max_bbox = {0};
@@ -1175,12 +1175,12 @@ void draw(DeviceWindow* device_window)
   
   RasterSurface raster_surface = {0};
 // 3x3
-  raster_surface.subsampling_factor = 3;
-  persistent float blackness_levels[3][3] = {
-    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-  };
+//  raster_surface.subsampling_factor = 3;
+//  persistent float blackness_levels[3][3] = {
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//  };
 
 // 4x4
 //  raster_surface.subsampling_factor = 4;
@@ -1191,26 +1191,18 @@ void draw(DeviceWindow* device_window)
 //    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
 //  };
 
-// 5x5
-//  raster_surface.subsampling_factor = 5;
-//  persistent float blackness_levels[5][5] = {
-//    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-//    {1.f/64.f, 1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/64.f},
-//    {1.f/64.f, 1.f/16.f, 1.f/40.f, 1.f/16.f, 1.f/64.f},
-//    {1.f/64.f, 1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/64.f},
-//    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-//  };
-
-// 6x6
-//  raster_surface.subsampling_factor = 6;
-//  persistent float blackness_levels[6][6] = {
-//    {1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f},
-//    {1.f/60.f, 1.f/36.f, 1.f/36.f, 1.f/36.f, 1.f/36.f, 1.f/60.f},
-//    {1.f/60.f, 1.f/36.f, 1.f/12.f, 1.f/12.f, 1.f/36.f, 1.f/60.f},
-//    {1.f/60.f, 1.f/36.f, 1.f/12.f, 1.f/12.f, 1.f/36.f, 1.f/60.f},
-//    {1.f/60.f, 1.f/36.f, 1.f/36.f, 1.f/36.f, 1.f/36.f, 1.f/60.f},
-//    {1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f},
-//  };
+// 8x8
+  raster_surface.subsampling_factor = 8;
+  persistent float blackness_levels[8][8] = {
+    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
+  };
   raster_surface.blackness_levels = blackness_levels[0];
   raster_surface.width = device_window->width * raster_surface.subsampling_factor;
   raster_surface.height = device_window->height * raster_surface.subsampling_factor;
@@ -1363,10 +1355,10 @@ void draw(DeviceWindow* device_window)
 
 #if 1
   iLine line = {0};
-  line.x0 = 10;
-  line.y0 = 10;
+  line.x0 = 5*8;
+  line.y0 = 5*8;
   line.x1 = 200;
-  line.y1 = 150;
+  line.y1 = 5*8;
   draw_line(&line, &raster_surface);
 #endif
 
