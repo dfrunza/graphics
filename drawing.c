@@ -566,6 +566,13 @@ bool raster_subpixel_reader_next(RasterSubpixelReader* reader)
   return got_pixel;
 }
 
+float raster_surface_get_blackness_level_at(RasterSurface* surface, int x, int y)
+{
+  float* subpixel = surface->blackness_levels + surface->subsampling_factor * x + y;
+  float level = *subpixel;
+  return level;
+}
+
 // .............................................................................
 
 // TODO: We could take the contours of the Shape and make a Polygon out of that,
@@ -657,8 +664,8 @@ void shape_to_polygon(Polygon* polygon, RasterShape* shape)
       //}
     }
     edge_list[i].count = edge_count;
-    printf("Contour #%d\n", i);
-    edge_list_print(&edge_list[i]);
+    //printf("Contour #%d\n", i);
+    //edge_list_print(&edge_list[i]);
   }
 
   polygon->edge_list = edge_list;
@@ -722,18 +729,18 @@ void draw_polygon(Polygon* polygon, RasterSurface* surface)
     }
 
     edge_list_sort(&active_edge_list);
-    if (active_edge_list.count > 0) {
-      printf("--------------- %d -----------------\n", y);
-      printf("y=%d\n", y);
-      edge_list_print(&active_edge_list);
-    }
+    //if (active_edge_list.count > 0) {
+    //  printf("--------------- %d -----------------\n", y);
+    //  printf("y=%d\n", y);
+    //  edge_list_print(&active_edge_list);
+    //}
 
     assert((active_edge_list.count % 2) == 0);
     for (int i = 0; i < active_edge_list.count; i += 2) {
       Edge* left_edge = &active_edge_list.entries[i];
       Edge* right_edge = &active_edge_list.entries[i+1];
-      printf("left_edge=(%d, %d)\n", left_edge->x_intercept, y);
-      printf("right_edge=(%d, %d)\n", right_edge->x_intercept, y);
+      //printf("left_edge=(%d, %d)\n", left_edge->x_intercept, y);
+      //printf("right_edge=(%d, %d)\n", right_edge->x_intercept, y);
 
       for (int x = left_edge->x_intercept; x < right_edge->x_intercept; ++x) {
         raster_surface_set_pixel(surface, x, y);
@@ -1145,7 +1152,7 @@ void draw(DeviceWindow* device_window)
          max_bbox.lower_left.x, max_bbox.lower_left.y, max_bbox.upper_right.x, max_bbox.upper_right.y);
   int font_width = max_bbox.upper_right.x - max_bbox.lower_left.x;
   int font_height = max_bbox.upper_right.y - max_bbox.lower_left.y;
-  int character_spacing = 2;  // px
+  int character_spacing = 1;  // px
   int line_spacing = 2; // px
 // .............................................................................
 
@@ -1164,16 +1171,30 @@ void draw(DeviceWindow* device_window)
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
   ViewWindow view_window = {0};
-  view_window.width = (float)device_window->width;
-  view_window.height = (float)device_window->height;
+  view_window.width = (float)device_window->width*1.f;
+  view_window.height = (float)device_window->height*1.f;
   
   RasterSurface raster_surface = {0};
-  raster_surface.subsampling_factor = 4;
-  persistent float blackness_levels[4][4] = {
-    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
-    {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
-    {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
-    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
+//  raster_surface.subsampling_factor = 4;
+//  persistent float blackness_levels[4][4] = {
+//    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
+//    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
+//    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
+//    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
+//  };
+//  raster_surface.subsampling_factor = 3;
+//  persistent float blackness_levels[3][3] = {
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//  };
+  raster_surface.subsampling_factor = 5;
+  persistent float blackness_levels[5][5] = {
+    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
+    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
+    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
+    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
+    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
   };
   raster_surface.blackness_levels = blackness_levels[0];
   raster_surface.width = device_window->width * raster_surface.subsampling_factor;
@@ -1207,8 +1228,8 @@ void draw(DeviceWindow* device_window)
   for (int i = 0; i < string_length; ++i) {
     Shape* shape = &shapes[i];
     fRectangle* shape_bbox = shape->bbox;
-    float lower_left_x = character_spacing + i*(font_width+character_spacing);
-    float lower_left_y = shape_bbox->lower_left.y+line_spacing+font_height;
+    float lower_left_x = character_spacing + i*(font_width+character_spacing) + 0;
+    float lower_left_y = shape_bbox->lower_left.y+line_spacing+font_height + 0;
     fMatrix3 horizontal_align_xform = {0};
     mk_translate_matrix(&horizontal_align_xform, lower_left_x, lower_left_y);
     apply_xform(shape, &horizontal_align_xform);
@@ -1330,61 +1351,6 @@ void draw(DeviceWindow* device_window)
 
   clear_device_window(device_window, 255);
 
-#if 0
-  uint8_t* pixel_scanline = raster_surface.subpixel_buffer;
-  for (int i = 0; i < raster_surface.height; ++i) {
-    uint8_t* pixel = pixel_scanline;
-    for (int j = 0; j < raster_surface.width; ++j) {
-      uint8_t pixel_value = *pixel;
-      printf("%d", pixel_value);
-      ++pixel;
-    }
-    pixel_scanline += raster_surface.width;
-    printf("\n");
-  }
-  printf("\n");
-  printf("\n");
-  printf("\n");
-#endif
-
-#if 0
-  uint8_t* pixel_scanline = raster_surface.subpixel_buffer;
-  int subpixel_count = 0;
-  for (int i = 0; i < device_window->height; ++i)
-  {
-    uint8_t* pixel_upperleft = pixel_scanline;
-    for (int j = 0; j < device_window->width; ++j)
-    {
-      uint8_t* subpixel_scanline = pixel_upperleft;
-      for (int s = 0; s < raster_surface.subsampling_factor; ++s)
-      {
-        uint8_t* subpixel = subpixel_scanline;
-        for (int t = 0; t < raster_surface.subsampling_factor; ++t)
-        {
-          uint8_t subpixel_value = *subpixel;
-          assert ((subpixel_value == 0) || (subpixel_value == 1));
-          printf("%d", subpixel_value);
-          ++subpixel;
-          ++subpixel_count;
-        }
-        subpixel_scanline += raster_surface.width;
-        printf("\n");
-      }
-      printf("\n");
-      pixel_upperleft += raster_surface.subsampling_factor;
-    }
-    pixel_scanline += raster_surface.width * raster_surface.subsampling_factor;
-  }
-  printf("\n");
-  assert (subpixel_count == raster_surface.subpixel_count);
-#endif
-
-  persistent float blackness_level_map[4][4] = {
-    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
-    {1.f/24.f, 1.f/8.f,  1.f/8.f,  1.f/24.f},
-    {1.f/24.f, 1.f/8.f,  1.f/8.f,  1.f/24.f},
-    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
-  };
   RasterSubpixelReader subpixel_reader = {0};
   raster_subpixel_reader_init(&subpixel_reader, &raster_surface, device_window);
   for (int y = 0; y < subpixel_reader.pixel_count_y; ++y)
@@ -1402,7 +1368,7 @@ void draw(DeviceWindow* device_window)
         {
           uint8_t subpixel_value = *subpixel;
           //printf("%d", subpixel_value);
-          pixel_value += subpixel_value * blackness_level_map[s][t] * 255.f;
+          pixel_value += subpixel_value * raster_surface_get_blackness_level_at(&raster_surface, t, s) * 255.f;
           ++subpixel;
         }
         //printf("= %f\n", pixel_value);
