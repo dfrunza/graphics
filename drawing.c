@@ -1120,7 +1120,7 @@ void draw(DeviceWindow* device_window)
   //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"drawing_surface.x_min = {-0.5f};";
+  wchar_t* string = L"drawing_surface.x_min = {-0.5f}; printf(\"Bounding box '%lc': \")";
   int string_length = wcslen(string);
 
   fRectangle max_bbox = {0};
@@ -1170,39 +1170,21 @@ void draw(DeviceWindow* device_window)
   drawing_surface.pixel_height = drawing_surface.height / drawing_surface.y_pixel_count;
 
   ViewWindow view_window = {0};
-  view_window.width = (float)device_window->width*1.f;
-  view_window.height = (float)device_window->height*1.f;
+  view_window.width = (float)device_window->width*1.0f;
+  view_window.height = (float)device_window->height*1.0f;
   
   RasterSurface raster_surface = {0};
-// 3x3
-//  raster_surface.subsampling_factor = 3;
-//  persistent float blackness_levels[3][3] = {
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//  };
+#define SAMPLE_RATE 4
+  raster_surface.subsampling_factor = SAMPLE_RATE;
+  persistent float blackness_levels[SAMPLE_RATE][SAMPLE_RATE];
+  float* level_at = blackness_levels[0];
+  for (int i = 0; i < SAMPLE_RATE*SAMPLE_RATE; ++i)
+  {
+    *level_at = 1.f/(float)(SAMPLE_RATE*SAMPLE_RATE);
+    ++level_at;
+  }
+#undef SAMPLE_RATE
 
-// 4x4
-//  raster_surface.subsampling_factor = 4;
-//  persistent float blackness_levels[4][4] = {
-//    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
-//    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
-//    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
-//    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
-//  };
-
-// 8x8
-  raster_surface.subsampling_factor = 8;
-  persistent float blackness_levels[8][8] = {
-    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-    {1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f, 1.f/64.f},
-  };
   raster_surface.blackness_levels = blackness_levels[0];
   raster_surface.width = device_window->width * raster_surface.subsampling_factor;
   raster_surface.height = device_window->height * raster_surface.subsampling_factor;
