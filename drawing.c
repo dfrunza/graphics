@@ -1175,6 +1175,15 @@ void draw(DeviceWindow* device_window)
   view_window.height = (float)device_window->height*1.f;
   
   RasterSurface raster_surface = {0};
+// 3x3
+//  raster_surface.subsampling_factor = 3;
+//  persistent float blackness_levels[3][3] = {
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
+//  };
+
+// 4x4
 //  raster_surface.subsampling_factor = 4;
 //  persistent float blackness_levels[4][4] = {
 //    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
@@ -1182,20 +1191,27 @@ void draw(DeviceWindow* device_window)
 //    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
 //    {1.f/16.f, 1.f/16.f, 1.f/16.f, 1.f/16.f},
 //  };
-//  raster_surface.subsampling_factor = 3;
-//  persistent float blackness_levels[3][3] = {
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//    {1.f/9.f, 1.f/9.f, 1.f/9.f},
-//  };
+
+// 5x5
   raster_surface.subsampling_factor = 5;
   persistent float blackness_levels[5][5] = {
-    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
-    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
-    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
-    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
-    {1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f, 1.f/25.f},
+    {1.f/48.f, 1.f/48.f, 1.f/48.f, 1.f/48.f, 1.f/48.f},
+    {1.f/48.f, 5.f/96.f, 5.f/96.f, 5.f/96.f, 1.f/48.f},
+    {1.f/48.f, 5.f/96.f, 1.f/40.f, 5.f/96.f, 1.f/48.f},
+    {1.f/48.f, 5.f/96.f, 5.f/96.f, 5.f/96.f, 1.f/48.f},
+    {1.f/48.f, 1.f/48.f, 1.f/48.f, 1.f/48.f, 1.f/48.f},
   };
+
+// 6x6
+//  raster_surface.subsampling_factor = 6;
+//  persistent float blackness_levels[6][6] = {
+//    {1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f},
+//    {1.f/60.f, 1.f/36.f, 1.f/36.f, 1.f/36.f, 1.f/36.f, 1.f/60.f},
+//    {1.f/60.f, 1.f/36.f, 1.f/12.f, 1.f/12.f, 1.f/36.f, 1.f/60.f},
+//    {1.f/60.f, 1.f/36.f, 1.f/12.f, 1.f/12.f, 1.f/36.f, 1.f/60.f},
+//    {1.f/60.f, 1.f/36.f, 1.f/36.f, 1.f/36.f, 1.f/36.f, 1.f/60.f},
+//    {1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f, 1.f/60.f},
+//  };
   raster_surface.blackness_levels = blackness_levels[0];
   raster_surface.width = device_window->width * raster_surface.subsampling_factor;
   raster_surface.height = device_window->height * raster_surface.subsampling_factor;
