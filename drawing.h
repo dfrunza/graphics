@@ -154,7 +154,7 @@ typedef struct {
   int total_vertex_count;
   int n_contours;
   EdgeList* edge_list;
-} Polygon;
+} iPolygon;
 
 typedef struct {
   uint8_t* memory;

@@ -1,5 +1,4 @@
-// -*- coding: utf-8 -*-
-
+// -*- coding: utf-8 -*- 
 #include <xcb/xcb.h>
 #include <xcb/xcb_image.h>
 #include <xcb/xcb_atom.h>

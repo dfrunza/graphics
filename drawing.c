@@ -477,9 +477,9 @@ Edge new_empty_edge()
   return result;
 }
 
-Polygon new_empty_polygon()
+iPolygon new_empty_polygon()
 {
-  Polygon result = {0};
+  iPolygon result = {0};
   return result;
 }
 
@@ -577,7 +577,7 @@ float raster_surface_get_blackness_level_at(RasterSurface* surface, int x, int y
 
 // TODO: We could take the contours of the Shape and make a Polygon out of that,
 // instead of the Polygon having the contrours contained in it, like the Shape does.
-void shape_to_polygon(Polygon* polygon, RasterShape* shape)
+void shape_to_polygon(iPolygon* polygon, RasterShape* shape)
 {
   polygon->contour_vertex_count = push_array(int, shape->n_contours);
   polygon->n_contours = shape->n_contours;
@@ -676,7 +676,7 @@ int y_intercept_at(RasterSurface* surface, int scanline_nr) {
   return result;
 }
 
-void draw_polygon(Polygon* polygon, RasterSurface* surface)
+void draw_polygon(iPolygon* polygon, RasterSurface* surface)
 {
   EdgeList edge_heap = {0};
   edge_heap.entries = push_array(Edge, polygon->total_vertex_count);
@@ -1121,7 +1121,7 @@ void draw(DeviceWindow* device_window)
   //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ~!@#$%^&*()_+-={}|:";
+  wchar_t* string = L"device_window.backbuffer = push_array(uint32_t, device_window.width";
   int string_length = wcslen(string);
 
   fRectangle max_bbox = {0};
@@ -1339,7 +1339,7 @@ void draw(DeviceWindow* device_window)
   for (int i = 0; i < string_length; ++i) {
     RasterShape* shape = &raster_shapes[i];
     if (shape->total_point_count > 0) {
-      Polygon polygon = {0};
+      iPolygon polygon = {0};
       shape_to_polygon(&polygon, shape);
       draw_polygon(&polygon, &raster_surface);
     }
