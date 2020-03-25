@@ -315,46 +315,6 @@ float drawing_surface_to_device_window_x_value(DrawingSurface* drawing_surface, 
   return result;
 }
 
-void set_pixel_on_device_window(DrawingSurface* drawing_surface, DeviceWindow* device_window, float x, float y)
-{
-  int pixel_y = round((y - drawing_surface->y_min)/drawing_surface->pixel_height);
-  assert(pixel_y >= 0 && pixel_y < drawing_surface->y_pixel_count);
-  int pixel_x = round((x - drawing_surface->x_min)/drawing_surface->pixel_width);
-  assert(pixel_x >= 0 && pixel_x < drawing_surface->x_pixel_count);
-
-// 4x4
-  persistent float blackness_level_map[4][4] = {
-    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
-    {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
-    {1.f/24.f, 1.f/8.f, 1.f/8.f, 1.f/24.f},
-    {1.f/24.f, 1.f/24.f, 1.f/24.f, 1.f/24.f},
-
-//    {1.f/48.f, 5.f/96.f, 5.f/96.f, 1.f/48.f},
-//    {5.f/96.f, 1.f/8.f, 1.f/8.f, 5.f/96.f},
-//    {5.f/96.f, 1.f/8.f, 1.f/8.f, 5.f/96.f},
-//    {1.f/48.f, 5.f/96.f, 5.f/96.f, 1.f/48.f},
-  };
-  int blackness_box_x = pixel_x % 4;
-  int blackness_box_y = pixel_y % 4;
-  int pixel_blackness = round(blackness_level_map[blackness_box_x][blackness_box_y]*255.f);
-  int device_pixel_x = pixel_x/4;
-  int device_pixel_y = pixel_y/4;
-
-// 3x3
-//  persistent float blackness_level_map[3][3] = {
-//    {1.f/16.f, 1.f/8.f, 1.f/16.f},
-//    {1.f/8.f, 1.f/4.f, 1.f/8.f},
-//    {1.f/16.f, 1.f/8.f, 1.f/16.f}
-//  };
-//  int blackness_box_x = pixel_x % 3;
-//  int blackness_box_y = pixel_y % 3;
-//  int pixel_blackness = round(blackness_level_map[blackness_box_x][blackness_box_y]*255.f);
-//  int device_pixel_x = pixel_x/3;
-//  int device_pixel_y = pixel_y/3;
-
-  increase_pixel_blackness(device_window, device_pixel_x, device_pixel_y, pixel_blackness);
-}
-
 bool compare_edge_is_less(Edge* edge_A, Edge* edge_B)
 {
   return edge_A->y0 < edge_B->y0;
@@ -1174,7 +1134,7 @@ void draw(DeviceWindow* device_window)
   view_window.height = (float)device_window->height*1.0f;
   
   RasterSurface raster_surface = {0};
-#define SAMPLE_RATE 4
+#define SAMPLE_RATE 3
   raster_surface.subsampling_factor = SAMPLE_RATE;
   persistent float blackness_levels[SAMPLE_RATE][SAMPLE_RATE];
   float* level_at = blackness_levels[0];
