@@ -8,7 +8,7 @@
 
 void* push_object(Arena* arena, size_t block_size) {
   void* object = arena->avail;
-  arena->avail += block_size + 1*KILOBYTE;
+  arena->avail += block_size;
   return object;
 }
 
@@ -614,14 +614,6 @@ void shape_to_polygon(iPolygon* polygon, RasterShape* shape)
       else assert(false);
 
       assert (edge->y1 != edge->y0);
-      //if (edge->y1 == edge->y0) {
-      //  prev_edge->y1 = next_edge->y0;
-
-      //  prev_edge->next_edge = next_edge;
-      //  next_edge->prev_edge = prev_edge;
-      //  edge->next_edge = edge->prev_edge = 0;
-      //  --edge_count;
-      //}
     }
     edge_list[i].count = edge_count;
     //printf("Contour #%d\n", i);
@@ -1080,7 +1072,7 @@ void draw(DeviceWindow* device_window)
   //wchar_t* string = L" abcdefghijklmnopqrstuvwxyz";
   //wchar_t* string = L"0123456789";
   //wchar_t* string = L"~!@#$%^&*()_+-={}|:\"<>?`[]\\;',./";
-  wchar_t* string = L"drawing_surface.x_min = {-0.5f}; printf(\"Bounding box '%lc': \")";
+  wchar_t* string = L"void draw(DeviceWindow* device_window) {max_bbox.lower_left.y = INT_MAX;}";
   int string_length = wcslen(string);
 
   fRectangle max_bbox = {0};
@@ -1113,7 +1105,6 @@ void draw(DeviceWindow* device_window)
   int font_height = max_bbox.upper_right.y - max_bbox.lower_left.y;
   int character_spacing = 1;  // px
   int line_spacing = 2; // px
-// .............................................................................
 
 // Set-up the Drawing Surface, the Viewing Window.
 // .............................................................................
@@ -1152,7 +1143,6 @@ void draw(DeviceWindow* device_window)
   raster_surface.max_x = raster_surface.width, raster_surface.max_y = raster_surface.height;
   raster_surface.subpixel_count = raster_surface.width * raster_surface.height;
   raster_surface.subpixel_buffer = push_array(uint8_t, raster_surface.subpixel_count);
-// .............................................................................
 
 // Arrange the shapes in the World space.
 // .............................................................................
@@ -1183,7 +1173,6 @@ void draw(DeviceWindow* device_window)
     mk_translate_matrix(&horizontal_align_xform, lower_left_x, lower_left_y);
     apply_xform(shape, &horizontal_align_xform);
   }
-// .............................................................................
 
 // Place the View Window in the World space and clip the shapes to fit inside it.
 // .............................................................................
@@ -1208,7 +1197,6 @@ void draw(DeviceWindow* device_window)
     clipped_shapes[i] = new_empty_shape();
     clip_shape(&shapes[i], clipping_boundary, &clipped_shapes[i]);
   }
-// .............................................................................
 
 #if 1
 // Place the View Window inside the World space.
@@ -1219,7 +1207,6 @@ void draw(DeviceWindow* device_window)
     mk_translate_matrix(&translate, -view_window.lower_left.x, -view_window.lower_left.y);
     apply_xform(shape, &translate);
   }
-// .............................................................................
 
 // Transform the View Window from World to Normalized coordinates.
 // .............................................................................
@@ -1230,7 +1217,6 @@ void draw(DeviceWindow* device_window)
     mk_scale_matrix(&scale, 1.f/view_window.width, 1.f/view_window.width);
     apply_xform(shape, &scale);
   }
-// .............................................................................
 
 // Transform the View Window from Normalized to Raster coordinates.
 // .............................................................................
@@ -1279,7 +1265,6 @@ void draw(DeviceWindow* device_window)
       }
     }
   }
-// .............................................................................
 
 // Draw the shapes onto the Raster Surface.
 // .............................................................................
@@ -1293,9 +1278,8 @@ void draw(DeviceWindow* device_window)
       draw_polygon(&polygon, &raster_surface);
     }
   }
-// .............................................................................
 
-#if 1
+#if 0
   iLine line = {0};
   line.x0 = 5*8;
   line.y0 = 5*8;
@@ -1336,8 +1320,6 @@ void draw(DeviceWindow* device_window)
       device_window_set_pixel_blackness(device_window, x, y, pixel_value);
     }
   }
-
-// .............................................................................
 #endif
 }
 

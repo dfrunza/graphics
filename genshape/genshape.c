@@ -24,8 +24,8 @@ typedef struct {
   uint8_t* avail;
 } Arena;
 
-char* font_name = "TerminusNormal-16.ttf";
-int font_size_px = 16;
+char* font_name = "TerminusNormal-18.ttf";
+int font_size_px = 18;
 int dpi = 72;
 wchar_t char_list[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
   " abcdefghijklmnopqrstuvwxyz" \
